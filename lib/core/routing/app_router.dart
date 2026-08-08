@@ -1,6 +1,9 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:shadja/core/constants/app_colors.dart';
 import 'package:shadja/core/responsive/responsive_layout.dart';
 import 'package:shadja/features/auth/presentation/auth_provider.dart';
@@ -18,6 +21,7 @@ import 'package:shadja/features/order/presentation/payment_success_page.dart';
 import 'package:shadja/features/reservation/presentation/reservation_form_page.dart';
 import 'package:shadja/features/reservation/presentation/reservation_detail_page.dart';
 import 'package:shadja/features/printer_settings/presentation/printer_scan_page.dart';
+import 'package:shadja/features/printer/printer_service.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -125,19 +129,44 @@ class NoOpPage<T> extends CustomTransitionPage<T> {
         );
 }
 
-class MainShell extends ConsumerWidget {
+class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key, required this.child});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends ConsumerState<MainShell> {
+  @override
+  void initState() {
+    super.initState();
+    _checkBluetoothPermission();
+  }
+
+  Future<void> _checkBluetoothPermission() async {
+    if (!Platform.isAndroid) return;
+    final sdkInt = await PrintBluetoothThermal.platformVersion;
+    final sdk = int.tryParse(sdkInt.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    if (sdk < 31) return;
+
+    final perm = await PrintBluetoothThermal.isPermissionBluetoothGranted;
+    if (!mounted) return;
+    if (!perm) {
+      await Permission.bluetoothConnect.request();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    ref.watch(printerProvider);
     final location = GoRouterState.of(context).matchedLocation;
     final index = _selectedIndex(location);
 
     return ResponsiveLayout(
       mobile: (c) => Scaffold(
-        body: child,
+        body: widget.child,
         bottomNavigationBar: NavigationBar(
           selectedIndex: index,
           onDestinationSelected: (i) => _onTap(context, i),
@@ -217,7 +246,7 @@ class MainShell extends ConsumerWidget {
                 ),
               ),
             ),
-            Expanded(child: child),
+            Expanded(child: widget.child),
           ],
         ),
       ),

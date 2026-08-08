@@ -10,6 +10,7 @@ import 'package:shadja/features/order/presentation/order_provider.dart';
 import 'package:shadja/features/cart/presentation/cart_item_tile.dart';
 import 'package:shadja/features/order/presentation/payment_method_sheet.dart';
 import 'package:shadja/features/reservation/presentation/reservation_provider.dart';
+import 'package:shadja/features/printer/presentation/print_dialog.dart';
 
 class CheckoutPage extends ConsumerStatefulWidget {
   const CheckoutPage({super.key});
@@ -21,17 +22,16 @@ class CheckoutPage extends ConsumerStatefulWidget {
 class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
-  final _phoneCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   final _discountCtrl = TextEditingController();
   String _orderType = 'dine-in';
+  String _discountType = 'rp';
   int? _selectedTableId;
 
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _phoneCtrl.dispose();
     _addressCtrl.dispose();
     _notesCtrl.dispose();
     _discountCtrl.dispose();
@@ -39,8 +39,14 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   }
 
   num get _discount {
-    final d = num.tryParse(_discountCtrl.text.replaceAll(RegExp(r'[^\d]'), ''));
-    return d ?? 0;
+    final raw = _discountCtrl.text.trim();
+    if (raw.isEmpty) return 0;
+    final d = num.tryParse(raw.replaceAll(RegExp(r'[^\d]'), ''));
+    if (d == null) return 0;
+    if (_discountType == 'pct') {
+      return (ref.read(cartProvider).subtotal * d / 100).round();
+    }
+    return d;
   }
 
   num get _total => ref.read(cartProvider).subtotal - _discount;
@@ -69,8 +75,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
               ))
           .toList(),
       customerName: _nameCtrl.text.trim().isEmpty ? null : _nameCtrl.text.trim(),
-      customerPhone:
-          _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
+      customerPhone: null,
       deliveryAddress: _orderType == 'delivery' ? _addressCtrl.text.trim() : null,
       notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
       discount: _discount,
@@ -97,9 +102,35 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     if (payment != null && payment.success && mounted) {
       ref.read(cartProvider.notifier).clear();
       ref.read(orderHistoryProvider.notifier).load();
-      context.go('/payment-success/${order.id}');
+      await PrintDialog.show(context, order: order);
+      if (mounted) context.go('/payment-success/${order.id}');
     }
     ref.read(checkoutProvider.notifier).reset();
+  }
+
+  Widget _buildDiscountChip(String label, String type, double paddingEnd) {
+    final selected = _discountType == type;
+    return Padding(
+      padding: EdgeInsets.only(right: paddingEnd),
+      child: GestureDetector(
+        onTap: () => setState(() => _discountType = type),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primary : AppColors.border,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: selected ? Colors.white : AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -191,15 +222,6 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                 ? 'Nama wajib diisi'
                 : null,
           ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _phoneCtrl,
-            keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(
-              labelText: 'No. Telepon (opsional)',
-              prefixIcon: Icon(Icons.phone_outlined, size: 18),
-            ),
-          ),
           if (_orderType == 'dine-in') ...[
             const SizedBox(height: 12),
             _TableSelector(
@@ -267,9 +289,17 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
           TextFormField(
             controller: _discountCtrl,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Diskon (Rp)',
-              prefixIcon: Icon(Icons.local_offer_outlined, size: 18),
+            decoration: InputDecoration(
+              labelText: _discountType == 'pct' ? 'Diskon (%)' : 'Diskon (Rp)',
+              prefixIcon: const Icon(Icons.local_offer_outlined, size: 18),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildDiscountChip('Rp', 'rp', 4),
+                  const SizedBox(width: 4),
+                  _buildDiscountChip('%', 'pct', 8),
+                ],
+              ),
             ),
             onChanged: (_) => setState(() {}),
           ),
@@ -281,7 +311,9 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
           _PriceRow(label: 'Subtotal', value: Formatters.rupiah(cart.subtotal)),
           if (_discount > 0)
             _PriceRow(
-                label: 'Diskon',
+                label: _discountType == 'pct'
+                    ? 'Diskon (${_discountCtrl.text.trim()}%)'
+                    : 'Diskon',
                 value: '- ${Formatters.rupiah(_discount)}',
                 color: AppColors.danger),
           const Divider(height: 24),

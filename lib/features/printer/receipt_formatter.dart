@@ -163,15 +163,6 @@ class ReceiptFormatter {
             styles: bodyRight()),
       ]));
     }
-    if (order.tax > 0) {
-      add(generator.row([
-        PosColumn(text: 'Pajak', width: 6, styles: bodyStyle()),
-        PosColumn(
-            text: Formatters.rupiah(order.tax),
-            width: 6,
-            styles: bodyRight()),
-      ]));
-    }
     add(generator.hr());
     add(generator.row([
       PosColumn(
@@ -274,10 +265,6 @@ class ReceiptFormatter {
     if (order.discount > 0) {
       sb.writeln(
           '${'Diskon'.padRight(width - Formatters.rupiah(order.discount).length)}-${Formatters.rupiah(order.discount)}');
-    }
-    if (order.tax > 0) {
-      sb.writeln(
-          '${'Pajak'.padRight(width - Formatters.rupiah(order.tax).length)}${Formatters.rupiah(order.tax)}');
     }
     sb.writeln(line);
     final totalStr = Formatters.rupiah(order.total);

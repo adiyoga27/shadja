@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:shadja/features/order/data/order_model.dart';
@@ -102,6 +103,14 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
       ),
       status: PrinterConnectionStatus.disconnected,
     );
+
+    if (mac != null && mac.isNotEmpty) {
+      if (kDebugMode) {
+        debugPrint('[Printer] _loadConfig: auto-connecting to $mac ($name)');
+      }
+      await Future.delayed(const Duration(milliseconds: 800));
+      await connect(mac);
+    }
   }
 
   Future<void> setPrinter(String macAddress, String name) async {
@@ -118,8 +127,31 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
     state = state.copyWith(
         status: PrinterConnectionStatus.connecting, error: null);
     try {
+      final btOn = await PrintBluetoothThermal.bluetoothEnabled;
+      if (!btOn) {
+        state = state.copyWith(
+          status: PrinterConnectionStatus.disconnected,
+          error: 'Bluetooth mati.',
+        );
+        return;
+      }
+
+      final alreadyConnected = await PrintBluetoothThermal.connectionStatus;
+      if (alreadyConnected) {
+        if (kDebugMode) {
+          debugPrint('[Printer] already connected');
+        }
+        state = state.copyWith(status: PrinterConnectionStatus.connected);
+        return;
+      }
+
+      await PrintBluetoothThermal.pairedBluetooths;
+
       final connected =
           await PrintBluetoothThermal.connect(macPrinterAddress: macAddress);
+      if (kDebugMode) {
+        debugPrint('[Printer] connect result: $connected');
+      }
       if (connected) {
         state = state.copyWith(status: PrinterConnectionStatus.connected);
       } else {
@@ -129,6 +161,9 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
         );
       }
     } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[Printer] connect error: $e');
+      }
       state = state.copyWith(
         status: PrinterConnectionStatus.disconnected,
         error: 'Gagal menyambung: $e',

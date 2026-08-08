@@ -152,8 +152,6 @@ class OrderDetailPage extends ConsumerWidget {
                         label: 'Diskon',
                         value: '- ${Formatters.rupiah(order.discount)}',
                         color: AppColors.danger),
-                  if (order.tax > 0)
-                    _PriceRow(label: 'Pajak', value: Formatters.rupiah(order.tax)),
                   const Divider(height: 24),
                   _PriceRow(
                       label: 'Total',

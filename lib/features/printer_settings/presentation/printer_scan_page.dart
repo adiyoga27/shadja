@@ -21,6 +21,7 @@ class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
   bool _bluetoothOn = false;
   bool _permissionGranted = false;
   bool _checked = false;
+  bool _requestingPermission = false;
   String? _error;
   List<BluetoothInfo> _devices = [];
 
@@ -43,16 +44,8 @@ class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
         _permissionGranted = perm;
         _checked = true;
       });
-      if (!perm) {
-        setState(() {
-          _error = 'Izin "Perangkat sekitar" (Nearby devices) belum diberikan.\n\n'
-              'Cara mengaktifkan:\n'
-              '1. Buka Pengaturan HP\n'
-              '2. Pilih Aplikasi > Shadja\n'
-              '3. Pilih Izin > Perangkat sekitar\n'
-              '4. Izinkan\n'
-              '5. Kembali & tekan Scan lagi';
-        });
+      if (!perm && Platform.isAndroid) {
+        await _requestPermission();
       }
     } catch (e) {
       if (kDebugMode) {
@@ -67,17 +60,36 @@ class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
   }
 
   Future<void> _requestPermission() async {
-    if (!Platform.isAndroid) return;
+    if (!Platform.isAndroid || _requestingPermission) return;
     final sdkInt = await PrintBluetoothThermal.platformVersion;
     final sdk = int.tryParse(sdkInt.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
     if (sdk < 31) return;
 
-    final status = await Permission.bluetoothConnect.request();
-    if (kDebugMode) {
-      debugPrint('[PrinterScan] permission request result: $status');
+    _requestingPermission = true;
+    try {
+      final status = await Permission.bluetoothConnect.request();
+      if (kDebugMode) {
+        debugPrint('[PrinterScan] permission request result: $status');
+      }
+      final perm = await PrintBluetoothThermal.isPermissionBluetoothGranted;
+      if (!mounted) return;
+      setState(() {
+        _permissionGranted = perm;
+      });
+      if (!perm) {
+        setState(() {
+          _error = 'Izin "Perangkat sekitar" (Nearby devices) belum diberikan.\n\n'
+              'Cara mengaktifkan:\n'
+              '1. Buka Pengaturan HP\n'
+              '2. Pilih Aplikasi > Shadja\n'
+              '3. Pilih Izin > Perangkat sekitar\n'
+              '4. Izinkan\n'
+              '5. Kembali & tekan Scan lagi';
+        });
+      }
+    } finally {
+      _requestingPermission = false;
     }
-    // Refresh status after permission request
-    await _checkStatus();
   }
 
   Future<void> _onScanPressed() async {
