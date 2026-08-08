@@ -246,7 +246,7 @@ class OrderDetailPage extends ConsumerWidget {
 
   String _orderTypeLabel(String type) {
     switch (type) {
-      case 'dine_in':
+      case 'dine-in':
         return 'Dine-in';
       case 'pickup':
         return 'Pickup';
@@ -389,6 +389,92 @@ class _PriceRow extends StatelessWidget {
                       (isTotal ? AppColors.primary : AppColors.textPrimary))),
         ],
       ),
+    );
+  }
+}
+
+class _ProgressButtons extends ConsumerStatefulWidget {
+  const _ProgressButtons({required this.order});
+
+  final OrderModel order;
+
+  @override
+  ConsumerState<_ProgressButtons> createState() => _ProgressButtonsState();
+}
+
+class _ProgressButtonsState extends ConsumerState<_ProgressButtons> {
+  bool _updating = false;
+
+  (String, String)? get _nextAction => switch (widget.order.orderStatus) {
+        'baru' => ('diproses', 'Proses Pesanan'),
+        'diproses' => ('siap', 'Tandai Siap'),
+        'siap' => ('selesai', 'Selesaikan'),
+        _ => null,
+      };
+
+  Future<void> _apply(String status) async {
+    if (_updating) return;
+    setState(() => _updating = true);
+    final ok = await ref
+        .read(orderHistoryProvider.notifier)
+        .updateStatus(widget.order.id, status);
+    if (!mounted) return;
+    setState(() => _updating = false);
+    ref.invalidate(orderDetailProvider(widget.order.id));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? 'Status diperbarui' : 'Gagal memperbarui status')),
+    );
+  }
+
+  Future<void> _confirmCancel() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Batalkan pesanan?'),
+        content: const Text('Pesanan akan dibatalkan dan tidak dapat dipulihkan.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Tutup'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Batalkan'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _apply('dibatalkan');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final next = _nextAction;
+    if (next == null) return const SizedBox.shrink();
+
+    return Row(
+      children: [
+        Expanded(
+          child: FilledButton.icon(
+            onPressed: _updating ? null : () => _apply(next.$1),
+            icon: const Icon(Icons.arrow_forward, size: 18),
+            label: Text(next.$2),
+          ),
+        ),
+        const SizedBox(width: 12),
+        OutlinedButton.icon(
+          onPressed: _updating ? null : _confirmCancel,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.danger,
+            side: const BorderSide(color: AppColors.danger),
+          ),
+          icon: const Icon(Icons.close, size: 18),
+          label: const Text('Batalkan'),
+        ),
+      ],
     );
   }
 }

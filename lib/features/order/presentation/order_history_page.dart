@@ -160,7 +160,7 @@ class _OrderTile extends StatelessWidget {
 
   String _orderTypeLabel() {
     switch (order.orderType) {
-      case 'dine_in':
+      case 'dine-in':
         return 'Dine-in';
       case 'pickup':
         return 'Pickup';

@@ -65,7 +65,12 @@ class ReceiptFormatter {
   }) {
     List<int> bytes = [];
     final is58 = paperWidth == 58;
-    final itemFont = is58 ? PosFontType.fontB : PosFontType.fontA;
+    final bodyFont = PosFontType.fontA;
+
+    PosStyles bodyStyle() => PosStyles(fontType: bodyFont);
+    PosStyles bodyRight() =>
+        PosStyles(fontType: bodyFont, align: PosAlign.right);
+    PosStyles centerStyle() => PosStyles(fontType: bodyFont, align: PosAlign.center);
 
     void add(List<int> b) => bytes.addAll(b);
 
@@ -75,26 +80,31 @@ class ReceiptFormatter {
     ));
     add(generator.text(
       storeAddress,
-      styles: const PosStyles(align: PosAlign.center),
+      styles: centerStyle(),
     ));
     add(generator.text(
       'Telp: $storePhone',
-      styles: const PosStyles(align: PosAlign.center),
+      styles: centerStyle(),
     ));
     add(generator.hr());
 
-    add(generator.text('No: ${order.orderNumber ?? order.id}'));
+    add(generator.text('No: ${order.orderNumber ?? order.id}',
+        styles: bodyStyle()));
     add(generator.text(
-        'Tgl: ${order.createdAt != null ? _dateStr(order.createdAt!) : '-'}'));
-    add(generator.text('Tipe: ${_orderTypeLabel(order.orderType)}'));
+        'Tgl: ${order.createdAt != null ? _dateStr(order.createdAt!) : '-'}',
+        styles: bodyStyle()));
+    add(generator.text('Tipe: ${_orderTypeLabel(order.orderType)}',
+        styles: bodyStyle()));
     if (order.customerName != null) {
-      add(generator.text('Pelanggan: ${order.customerName}'));
+      add(generator.text('Pelanggan: ${order.customerName}',
+          styles: bodyStyle()));
     }
     if (order.customerPhone != null) {
-      add(generator.text('Telp: ${order.customerPhone}'));
+      add(generator.text('Telp: ${order.customerPhone}', styles: bodyStyle()));
     }
     if (order.deliveryAddress != null) {
-      add(generator.text('Alamat: ${order.deliveryAddress}'));
+      add(generator.text('Alamat: ${order.deliveryAddress}',
+          styles: bodyStyle()));
     }
     add(generator.hr());
 
@@ -103,62 +113,63 @@ class ReceiptFormatter {
         // 58mm compact layout: two-line format to avoid cutoff
         add(generator.text(
           item.menuItemName,
-          styles: PosStyles(fontType: PosFontType.fontA),
+          styles: bodyStyle(),
         ));
         add(generator.row([
           PosColumn(
               text: '${item.quantity}x${Formatters.rupiah(item.price)}',
               width: 8,
-              styles: PosStyles(fontType: itemFont)),
+              styles: bodyStyle()),
           PosColumn(
               text: Formatters.rupiah(item.subtotal),
               width: 4,
-              styles: PosStyles(align: PosAlign.right, fontType: itemFont)),
+              styles: bodyRight()),
         ]));
       } else {
         add(generator.row([
-          PosColumn(text: item.menuItemName, width: 6),
+          PosColumn(text: item.menuItemName, width: 6, styles: bodyStyle()),
           PosColumn(
               text: '${item.quantity} x ${Formatters.rupiah(item.price)}',
-              width: 3),
+              width: 3,
+              styles: bodyStyle()),
           PosColumn(
               text: Formatters.rupiah(item.subtotal),
               width: 3,
-              styles: const PosStyles(align: PosAlign.right)),
+              styles: bodyRight()),
         ]));
       }
       if (item.notes != null && item.notes!.isNotEmpty) {
         add(generator.text(
           '  ^ ${item.notes}',
-          styles: const PosStyles(fontType: PosFontType.fontB),
+          styles: bodyStyle(),
         ));
       }
     }
     add(generator.hr());
 
     add(generator.row([
-      PosColumn(text: 'Subtotal', width: 6),
+      PosColumn(text: 'Subtotal', width: 6, styles: bodyStyle()),
       PosColumn(
           text: Formatters.rupiah(order.subtotal),
           width: 6,
-          styles: const PosStyles(align: PosAlign.right)),
+          styles: bodyRight()),
     ]));
     if (order.discount > 0) {
       add(generator.row([
-        PosColumn(text: 'Diskon', width: 6),
+        PosColumn(text: 'Diskon', width: 6, styles: bodyStyle()),
         PosColumn(
             text: '- ${Formatters.rupiah(order.discount)}',
             width: 6,
-            styles: const PosStyles(align: PosAlign.right)),
+            styles: bodyRight()),
       ]));
     }
     if (order.tax > 0) {
       add(generator.row([
-        PosColumn(text: 'Pajak', width: 6),
+        PosColumn(text: 'Pajak', width: 6, styles: bodyStyle()),
         PosColumn(
             text: Formatters.rupiah(order.tax),
             width: 6,
-            styles: const PosStyles(align: PosAlign.right)),
+            styles: bodyRight()),
       ]));
     }
     add(generator.hr());
@@ -178,25 +189,28 @@ class ReceiptFormatter {
 
     if (order.payments.isNotEmpty) {
       for (final p in order.payments) {
-        add(generator.text('${p.method.toUpperCase()}: ${Formatters.rupiah(p.amount)}'));
-        if (p.reference != null) add(generator.text('Ref: ${p.reference}'));
+        add(generator.text('${p.method.toUpperCase()}: ${Formatters.rupiah(p.amount)}',
+            styles: bodyStyle()));
+        if (p.reference != null) {
+          add(generator.text('Ref: ${p.reference}', styles: bodyStyle()));
+        }
       }
       add(generator.hr());
     }
     if (order.notes != null && order.notes!.isNotEmpty) {
-      add(generator.text('Catatan: ${order.notes}'));
+      add(generator.text('Catatan: ${order.notes}', styles: bodyStyle()));
       add(generator.hr());
     }
 
     add(generator.text(
       'Terima kasih',
-      styles: const PosStyles(align: PosAlign.center, bold: true),
+      styles: PosStyles(align: PosAlign.center, bold: true, fontType: bodyFont),
     ));
     add(generator.text(
       'Barokallah',
       styles: const PosStyles(align: PosAlign.center),
     ));
-    add(generator.feed(2));
+    add(generator.feed(1));
 
     return bytes;
   }
@@ -306,7 +320,7 @@ class ReceiptFormatter {
 
   static String _orderTypeLabel(String type) {
     switch (type) {
-      case 'dine_in':
+      case 'dine-in':
         return 'Dine-in';
       case 'pickup':
         return 'Pickup';

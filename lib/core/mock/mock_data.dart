@@ -159,7 +159,7 @@ class MockData {
     OrderModel(
       id: 1001,
       orderNumber: 'ORD-1001',
-      orderType: 'dine_in',
+      orderType: 'dine-in',
       orderStatus: 'selesai',
       subtotal: 82000,
       discount: 5000,

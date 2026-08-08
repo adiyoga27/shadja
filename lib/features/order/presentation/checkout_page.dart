@@ -9,8 +9,7 @@ import 'package:shadja/features/order/data/order_repository.dart';
 import 'package:shadja/features/order/presentation/order_provider.dart';
 import 'package:shadja/features/cart/presentation/cart_item_tile.dart';
 import 'package:shadja/features/order/presentation/payment_method_sheet.dart';
-import 'package:shadja/features/reservation/data/reservation_repository.dart';
-import 'package:shadja/features/reservation/data/reservation_model.dart';
+import 'package:shadja/features/reservation/presentation/reservation_provider.dart';
 
 class CheckoutPage extends ConsumerStatefulWidget {
   const CheckoutPage({super.key});
@@ -26,7 +25,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   final _addressCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   final _discountCtrl = TextEditingController();
-  String _orderType = 'dine_in';
+  String _orderType = 'dine-in';
   int? _selectedTableId;
 
   @override
@@ -48,6 +47,15 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_orderType == 'dine-in' && _selectedTableId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Pilih meja terlebih dahulu'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+      return;
+    }
     final cart = ref.read(cartProvider);
     if (cart.isEmpty) return;
 
@@ -66,7 +74,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       deliveryAddress: _orderType == 'delivery' ? _addressCtrl.text.trim() : null,
       notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
       discount: _discount,
-      restaurantTableId: _orderType == 'dine_in' ? _selectedTableId : null,
+      restaurantTableId: _orderType == 'dine-in' ? _selectedTableId : null,
     );
 
     final order = await ref.read(checkoutProvider.notifier).submit(req);
@@ -192,10 +200,11 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
               prefixIcon: Icon(Icons.phone_outlined, size: 18),
             ),
           ),
-          if (_orderType == 'dine_in') ...[
+          if (_orderType == 'dine-in') ...[
             const SizedBox(height: 12),
             _TableSelector(
-              onChanged: (id) => _selectedTableId = id,
+              selectedId: _selectedTableId,
+              onChanged: (id) => setState(() => _selectedTableId = id),
             ),
           ],
           if (_orderType == 'delivery') ...[
@@ -368,7 +377,7 @@ class _OrderTypeSelector extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   static const _options = [
-    ('dine_in', 'Dine-in', Icons.restaurant),
+    ('dine-in', 'Dine-in', Icons.restaurant),
     ('pickup', 'Pickup', Icons.shopping_bag_outlined),
     ('delivery', 'Delivery', Icons.pedal_bike),
   ];
@@ -422,8 +431,9 @@ class _OrderTypeSelector extends StatelessWidget {
 }
 
 class _TableSelector extends ConsumerWidget {
-  const _TableSelector({required this.onChanged});
+  const _TableSelector({required this.selectedId, required this.onChanged});
 
+  final int? selectedId;
   final ValueChanged<int> onChanged;
 
   @override
@@ -439,21 +449,63 @@ class _TableSelector extends ConsumerWidget {
                 style: TextStyle(color: AppColors.danger, fontSize: 13)),
           );
         }
-        return DropdownButtonFormField<int>(
-          decoration: const InputDecoration(
-            labelText: 'Pilih Meja',
-            prefixIcon: Icon(Icons.table_bar_outlined, size: 18),
-          ),
-          items: available
-              .map((t) => DropdownMenuItem(
-                    value: t.id,
-                    child: Text('Meja ${t.tableNumber} (${t.capacity} org)'),
-                  ))
-              .toList(),
-          onChanged: (v) {
-            if (v != null) onChanged(v);
-          },
-          validator: (v) => v == null ? 'Pilih meja' : null,
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: available.map((t) {
+                final selected = selectedId == t.id;
+                return GestureDetector(
+                  onTap: () => onChanged(t.id),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: selected ? AppColors.primaryBg : AppColors.surface,
+                      border: Border.all(
+                        color: selected ? AppColors.primary : AppColors.border,
+                        width: selected ? 2 : 1,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          selected
+                              ? Icons.check_circle
+                              : Icons.table_bar_outlined,
+                          size: 18,
+                          color: selected
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Meja ${t.tableNumber}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: selected
+                                ? AppColors.primary
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            if (selectedId == null) ...[
+              const SizedBox(height: 8),
+              const Text('Pilih meja yang tersedia.',
+                  style: TextStyle(color: AppColors.danger, fontSize: 12)),
+            ],
+          ],
         );
       },
       loading: () => const Padding(
@@ -462,7 +514,7 @@ class _TableSelector extends ConsumerWidget {
             height: 20,
             child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
       ),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 }

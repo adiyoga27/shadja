@@ -116,7 +116,7 @@ class OrderRepository {
           'order_id': orderId,
           'method': method,
           'amount': amount,
-          if (reference != null) 'reference': reference,
+          'reference': ?reference,
         },
       );
       return PaymentModel.fromJson(response.data as Map<String, dynamic>);
