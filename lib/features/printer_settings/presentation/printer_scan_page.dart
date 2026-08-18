@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:shadja/core/constants/app_colors.dart';
+import 'package:shadja/features/printer/network_printer_scanner.dart';
 import 'package:shadja/features/printer/printer_service.dart';
 
 class PrinterScanPage extends ConsumerStatefulWidget {
@@ -17,6 +19,10 @@ class PrinterScanPage extends ConsumerStatefulWidget {
 }
 
 class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
+  // Mode / tab
+  PrinterConnectionType _mode = PrinterConnectionType.bluetooth;
+
+  // Bluetooth
   bool _scanning = false;
   bool _bluetoothOn = false;
   bool _permissionGranted = false;
@@ -25,10 +31,25 @@ class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
   String? _error;
   List<BluetoothInfo> _devices = [];
 
+  // LAN
+  final _ipCtrl = TextEditingController();
+  final _portCtrl = TextEditingController(text: '9100');
+  bool _lanScanning = false;
+  bool _lanTesting = false;
+  List<NetworkPrinterDevice> _lanDevices = [];
+
   @override
   void initState() {
     super.initState();
+    _mode = ref.read(printerProvider).config.connectionType;
     _checkStatus();
+  }
+
+  @override
+  void dispose() {
+    _ipCtrl.dispose();
+    _portCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _checkStatus() async {
@@ -109,7 +130,6 @@ class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
   }
 
   Future<void> _startScan() async {
-
     setState(() {
       _scanning = true;
       _devices = [];
@@ -170,9 +190,75 @@ class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
     }
   }
 
-  Future<void> _select(BluetoothInfo d) async {
-    await ref.read(printerProvider.notifier).setPrinter(d.macAdress, d.name);
+  Future<void> _selectBluetooth(BluetoothInfo d) async {
+    await ref.read(printerProvider.notifier).setBluetoothPrinter(d.macAdress, d.name);
     if (mounted) context.go('/home/printer');
+  }
+
+  // --- LAN ---
+
+  Future<void> _scanLan() async {
+    setState(() {
+      _lanScanning = true;
+      _lanDevices = [];
+      _error = null;
+    });
+    try {
+      final results = await NetworkPrinterScanner.scan();
+      if (!mounted) return;
+      setState(() {
+        _lanDevices = results;
+        _lanScanning = false;
+      });
+      if (results.isEmpty) {
+        setState(() {
+          _error = 'Tidak ditemukan printer LAN.\n\n'
+              'Pastikan:\n'
+              '1. Printer & HP/tablet terhubung ke Wi-Fi yang sama\n'
+              '2. Printer dalam mode LAN (cek lampu indikator)\n'
+              '3. Firewall router tidak memblokir port 9100';
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _lanScanning = false;
+        _error = 'Gagal memindai jaringan: $e';
+      });
+    }
+  }
+
+  Future<void> _selectLan(NetworkPrinterDevice d) async {
+    final port = int.tryParse(_portCtrl.text.trim()) ?? 9100;
+    await ref.read(printerProvider.notifier).setNetworkPrinter(
+          d.ipAddress,
+          port,
+          'iWare Thermal (${d.ipAddress})',
+        );
+    if (mounted) context.go('/home/printer');
+  }
+
+  Future<void> _connectManual() async {
+    final ip = _ipCtrl.text.trim();
+    if (ip.isEmpty) {
+      setState(() => _error = 'Masukkan alamat IP printer.');
+      return;
+    }
+    final port = int.tryParse(_portCtrl.text.trim()) ?? 9100;
+    setState(() {
+      _lanTesting = true;
+      _error = null;
+    });
+    try {
+      await ref.read(printerProvider.notifier).setNetworkPrinter(ip, port, 'iWare Thermal ($ip)');
+      if (mounted) context.go('/home/printer');
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = 'Gagal terhubung: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _lanTesting = false);
+    }
   }
 
   @override
@@ -185,181 +271,327 @@ class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
           onPressed: () => context.pop(),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      body: DefaultTabController(
+        length: 2,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Bluetooth status
-            if (_checked) ...[
-              Row(
-                children: [
-                  Icon(
-                    _bluetoothOn ? Icons.bluetooth : Icons.bluetooth_disabled,
-                    color: _bluetoothOn ? AppColors.success : AppColors.danger,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _bluetoothOn ? 'Bluetooth aktif' : 'Bluetooth mati',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: _bluetoothOn ? AppColors.success : AppColors.danger,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    _permissionGranted ? 'Izin OK' : 'Perlu izin',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: _permissionGranted ? AppColors.success : AppColors.warning,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-            ],
-            // Info banner
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: _error != null ? AppColors.warningBg : AppColors.infoBg,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    _error != null ? Icons.warning_amber : Icons.info_outline,
-                    size: 20,
-                    color: _error != null ? AppColors.warning : AppColors.info,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _error ??
-                          'Pastikan printer iWare sudah menyala dan dipasangkan (paired) di pengaturan Bluetooth HP/tablet sebelum scan.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: _error != null ? AppColors.warning : AppColors.info,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            TabBar(
+              labelColor: AppColors.primary,
+              unselectedLabelColor: AppColors.textSecondary,
+              indicatorColor: AppColors.primary,
+              onTap: (i) => setState(() {
+                _mode = i == 0
+                    ? PrinterConnectionType.bluetooth
+                    : PrinterConnectionType.network;
+                _error = null;
+              }),
+              tabs: const [
+                Tab(text: 'Bluetooth', icon: Icon(Icons.bluetooth, size: 20)),
+                Tab(text: 'LAN (Wi-Fi)', icon: Icon(Icons.lan_outlined, size: 20)),
+              ],
             ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: _scanning ? null : _onScanPressed,
-              icon: _scanning
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.refresh, size: 18),
-              label: Text(_scanning ? 'Memindai…' : 'Scan Printer'),
-            ),
-            const SizedBox(height: 16),
             Expanded(
-              child: _devices.isEmpty
-                  ? ListView(
-                      shrinkWrap: true,
-                      children: [
-                        if (!_scanning && _checked)
-                          const Padding(
-                            padding: EdgeInsets.only(top: 24),
-                            child: Center(
-                              child: Column(
-                                children: [
-                                  Icon(Icons.bluetooth_searching,
-                                      size: 56, color: AppColors.textHint),
-                                  SizedBox(height: 12),
-                                  Text(
-                                    'Belum ada printer ditemukan.',
-                                    style: TextStyle(
-                                        fontSize: 15,
-                                        color: AppColors.textPrimary),
-                                  ),
-                                  SizedBox(height: 24),
-                                  Text(
-                                    'Cara memasangkan printer:\n'
-                                    '1. Nyalakan printer iWare\n'
-                                    '2. Buka Pengaturan HP/tablet\n'
-                                    '3. Pilih Bluetooth\n'
-                                    '4. Cari & pasangkan printer\n'
-                                    '5. Kembali & tekan Scan Printer',
-                                    style: TextStyle(
-                                        fontSize: 13,
-                                        color: AppColors.textSecondary,
-                                        height: 1.8),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                      ],
-                    )
-                  : ListView.separated(
-                      itemCount: _devices.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final d = _devices[index];
-                        return Material(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          elevation: 1,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () => _select(d),
-                            child: Padding(
-                              padding: const EdgeInsets.all(14),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 44,
-                                    height: 44,
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primaryBg,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: const Icon(Icons.print_outlined,
-                                        size: 22, color: AppColors.primary),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          d.name,
-                                          style: const TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w600),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          d.macAdress,
-                                          style: const TextStyle(
-                                              fontSize: 12,
-                                              color: AppColors.textSecondary),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const Icon(Icons.check_circle_outline,
-                                      color: AppColors.primary),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+              child: _mode == PrinterConnectionType.bluetooth
+                  ? _buildBluetoothTab()
+                  : _buildLanTab(),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBluetoothTab() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_checked) ...[
+            Row(
+              children: [
+                Icon(
+                  _bluetoothOn ? Icons.bluetooth : Icons.bluetooth_disabled,
+                  color: _bluetoothOn ? AppColors.success : AppColors.danger,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _bluetoothOn ? 'Bluetooth aktif' : 'Bluetooth mati',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: _bluetoothOn ? AppColors.success : AppColors.danger,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  _permissionGranted ? 'Izin OK' : 'Perlu izin',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: _permissionGranted ? AppColors.success : AppColors.warning,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+          _InfoBanner(error: _error, message: _error != null
+              ? null
+              : 'Pastikan printer iWare sudah menyala dan dipasangkan (paired) di pengaturan Bluetooth HP/tablet sebelum scan.'),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: _scanning ? null : _onScanPressed,
+            icon: _scanning
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.refresh, size: 18),
+            label: Text(_scanning ? 'Memindai…' : 'Scan Printer'),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: _devices.isEmpty
+                ? ListView(
+                    shrinkWrap: true,
+                    children: [
+                      if (!_scanning && _checked)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 24),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Icon(Icons.bluetooth_searching,
+                                    size: 56, color: AppColors.textHint),
+                                SizedBox(height: 12),
+                                Text(
+                                  'Belum ada printer ditemukan.',
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      color: AppColors.textPrimary),
+                                ),
+                                SizedBox(height: 24),
+                                Text(
+                                  'Cara memasangkan printer:\n'
+                                  '1. Nyalakan printer iWare\n'
+                                  '2. Buka Pengaturan HP/tablet\n'
+                                  '3. Pilih Bluetooth\n'
+                                  '4. Cari & pasangkan printer\n'
+                                  '5. Kembali & tekan Scan Printer',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.textSecondary,
+                                      height: 1.8),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  )
+                : ListView.separated(
+                    itemCount: _devices.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final d = _devices[index];
+                      return _DeviceTile(
+                        icon: Icons.bluetooth,
+                        title: d.name,
+                        subtitle: d.macAdress,
+                        onTap: () => _selectBluetooth(d),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLanTab() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextFormField(
+            controller: _ipCtrl,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+            ],
+            decoration: const InputDecoration(
+              labelText: 'Alamat IP printer',
+              hintText: 'contoh: 192.168.1.100',
+              prefixIcon: Icon(Icons.lan_outlined, size: 18),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _portCtrl,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: const InputDecoration(
+              labelText: 'Port',
+              hintText: '9100',
+              prefixIcon: Icon(Icons.numbers, size: 18),
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: _lanTesting ? null : _connectManual,
+            icon: _lanTesting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.link, size: 18),
+            label: Text(_lanTesting ? 'Menghubungkan…' : 'Hubungkan'),
+          ),
+          const SizedBox(height: 20),
+          _InfoBanner(
+            error: _error,
+            message: _error != null
+                ? null
+                : 'Tidak tahu IP printer? Tekan tombol "Cari IP Printer" di bawah untuk memindai otomatis seluruh jaringan.',
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: _lanScanning ? null : _scanLan,
+            icon: _lanScanning
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.wifi_find, size: 18),
+            label: Text(_lanScanning ? 'Memindai jaringan…' : 'Cari IP Printer'),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Memindai seluruh subnet (dapat memakan waktu ±1 menit).',
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: _lanDevices.isEmpty
+                ? const SizedBox.shrink()
+                : ListView.separated(
+                    itemCount: _lanDevices.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final d = _lanDevices[index];
+                      return _DeviceTile(
+                        icon: Icons.print_outlined,
+                        title: 'iWare Thermal (${d.ipAddress})',
+                        subtitle: 'Port 9100 — ketuk untuk memilih',
+                        onTap: () => _selectLan(d),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoBanner extends StatelessWidget {
+  const _InfoBanner({this.error, this.message});
+  final String? error;
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) {
+    final showError = error != null;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: showError ? AppColors.warningBg : AppColors.infoBg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            showError ? Icons.warning_amber : Icons.info_outline,
+            size: 20,
+            color: showError ? AppColors.warning : AppColors.info,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              error ?? message ?? '',
+              style: TextStyle(
+                fontSize: 13,
+                color: showError ? AppColors.warning : AppColors.info,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeviceTile extends StatelessWidget {
+  const _DeviceTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(12),
+      elevation: 1,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Icon(icon, size: 22, color: AppColors.primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.check_circle_outline, color: AppColors.primary),
+            ],
+          ),
         ),
       ),
     );

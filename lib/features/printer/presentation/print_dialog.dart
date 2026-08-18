@@ -23,17 +23,21 @@ class PrintDialog extends ConsumerStatefulWidget {
 
 class _PrintDialogState extends ConsumerState<PrintDialog> {
   bool _printing = false;
-  bool _scanning = true;
+  bool _scanning = false;
   List<BluetoothInfo> _devices = [];
   String? _selectedMac;
 
   @override
   void initState() {
     super.initState();
-    _scan();
+    final cfg = ref.read(printerProvider).config;
+    if (cfg.connectionType == PrinterConnectionType.bluetooth) {
+      _scan();
+    }
   }
 
   Future<void> _scan() async {
+    setState(() => _scanning = true);
     try {
       final paired = await PrintBluetoothThermal.pairedBluetooths
           .timeout(const Duration(seconds: 10));
@@ -54,26 +58,11 @@ class _PrintDialogState extends ConsumerState<PrintDialog> {
       _printing = true;
     });
     try {
-      await ref.read(printerProvider.notifier).setPrinter(macAddress, name);
+      await ref.read(printerProvider.notifier).setBluetoothPrinter(macAddress, name);
       await ref.read(printerProvider.notifier).printReceipt(widget.order);
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Struk berhasil dicetak.'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-      }
+      _finish();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal cetak: $e'),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-      }
+      _fail(e);
     } finally {
       if (mounted) setState(() => _printing = false);
     }
@@ -83,33 +72,41 @@ class _PrintDialogState extends ConsumerState<PrintDialog> {
     setState(() => _printing = true);
     try {
       await ref.read(printerProvider.notifier).printReceipt(widget.order);
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Struk berhasil dicetak.'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-      }
+      _finish();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal cetak: $e'),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-      }
+      _fail(e);
     } finally {
       if (mounted) setState(() => _printing = false);
     }
+  }
+
+  void _finish() {
+    if (!mounted) return;
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Struk berhasil dicetak.'),
+        backgroundColor: AppColors.success,
+      ),
+    );
+  }
+
+  void _fail(Object e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Gagal cetak: $e'),
+        backgroundColor: AppColors.danger,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final printer = ref.watch(printerProvider);
     final connected = printer.status == PrinterConnectionStatus.connected;
+    final cfg = printer.config;
+    final isBt = cfg.connectionType == PrinterConnectionType.bluetooth;
 
     return AlertDialog(
       icon: const Icon(Icons.print_outlined, color: AppColors.primary),
@@ -126,24 +123,27 @@ class _PrintDialogState extends ConsumerState<PrintDialog> {
             if (connected) ...[
               Row(
                 children: [
-                  const Icon(Icons.bluetooth_connected,
-                      size: 18, color: AppColors.success),
+                  Icon(
+                    isBt ? Icons.bluetooth_connected : Icons.lan_outlined,
+                    size: 18,
+                    color: AppColors.success,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'Terhubung: ${printer.config.name ?? printer.config.macAddress}',
+                      'Terhubung: ${cfg.name ?? cfg.displayAddress}',
                       style: const TextStyle(
                           fontSize: 13, color: AppColors.success),
                     ),
                   ),
                 ],
               ),
-            ] else if (_scanning) ...[
+            ] else if (isBt && _scanning) ...[
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
                 child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
               ),
-            ] else if (_devices.isNotEmpty) ...[
+            ] else if (isBt && _devices.isNotEmpty) ...[
               const Text('Pilih printer:',
                   style: TextStyle(
                       fontSize: 13, fontWeight: FontWeight.w600)),
@@ -178,14 +178,21 @@ class _PrintDialogState extends ConsumerState<PrintDialog> {
             ] else ...[
               Row(
                 children: [
-                  const Icon(Icons.bluetooth_disabled,
-                      size: 18, color: AppColors.textHint),
+                  Icon(
+                    isBt ? Icons.bluetooth_disabled : Icons.lan_outlined,
+                    size: 18,
+                    color: AppColors.textHint,
+                  ),
                   const SizedBox(width: 6),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Tidak ada printer terpasang.\n'
-                      'Pastikan printer sudah dipasangkan (paired) di pengaturan Bluetooth HP/tablet.',
-                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                      isBt
+                          ? 'Tidak ada printer terpasang.\n'
+                              'Pastikan printer sudah dipasangkan (paired) di pengaturan Bluetooth HP/tablet.'
+                          : 'Printer belum terhubung.\n'
+                              'Atur koneksi LAN di Pengaturan Printer terlebih dahulu.',
+                      style: const TextStyle(
+                          fontSize: 13, color: AppColors.textSecondary),
                     ),
                   ),
                 ],
@@ -199,7 +206,7 @@ class _PrintDialogState extends ConsumerState<PrintDialog> {
           onPressed: _printing ? null : () => Navigator.pop(context),
           child: const Text('Lewati'),
         ),
-        if (!connected && !_scanning && _devices.isEmpty)
+        if (!connected && isBt && !_scanning && _devices.isEmpty)
           TextButton(
             onPressed: _scan,
             child: const Text('Scan Ulang'),

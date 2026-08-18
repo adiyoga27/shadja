@@ -109,8 +109,12 @@ class _PrinterSettingsPageState extends ConsumerState<PrinterSettingsPage> {
                       alignment: Alignment.center,
                       child: Icon(
                         connected
-                            ? Icons.bluetooth_connected
-                            : Icons.bluetooth_disabled,
+                            ? (cfg.connectionType == PrinterConnectionType.network
+                                ? Icons.lan_outlined
+                                : Icons.bluetooth_connected)
+                            : (cfg.connectionType == PrinterConnectionType.network
+                                ? Icons.lan_outlined
+                                : Icons.bluetooth_disabled),
                         size: 24,
                         color: connected
                             ? AppColors.success
@@ -130,9 +134,9 @@ class _PrinterSettingsPageState extends ConsumerState<PrinterSettingsPage> {
                           ),
                           Text(
                             connected
-                                ? 'Terhubung'
-                                : (cfg.macAddress != null
-                                    ? 'Terputus'
+                                ? 'Terhubung (${cfg.connectionType.label})'
+                                : (cfg.isConfigured
+                                    ? 'Terputus (${cfg.displayAddress})'
                                     : 'Pilih printer'),
                             style: TextStyle(
                                 fontSize: 13,
@@ -153,11 +157,16 @@ class _PrinterSettingsPageState extends ConsumerState<PrinterSettingsPage> {
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () => context.go('/home/printer/scan'),
-                    icon: const Icon(Icons.bluetooth_searching, size: 18),
+                    icon: Icon(
+                      cfg.connectionType == PrinterConnectionType.network
+                          ? Icons.lan_outlined
+                          : Icons.bluetooth_searching,
+                      size: 18,
+                    ),
                     label: const Text('Pilih Printer'),
                   ),
                 ),
-                if (cfg.macAddress != null) ...[
+                if (cfg.isConfigured) ...[
                   const SizedBox(width: 8),
                   IconButton.outlined(
                     onPressed: () =>
@@ -217,6 +226,35 @@ class _PrinterSettingsPageState extends ConsumerState<PrinterSettingsPage> {
                       fontSize: 13, color: AppColors.textSecondary)),
               activeTrackColor: AppColors.primary,
               contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+            ),
+            const SizedBox(height: 24),
+
+            // Print copies
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Jumlah Cetak Struk',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 2),
+                      const Text(
+                          'Berapa kali struk dicetak (mis. 2 = cetak 2x)',
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ),
+                _CopyStepper(
+                  value: cfg.printCopies,
+                  onChanged: (v) => ref
+                      .read(printerProvider.notifier)
+                      .updateConfig(cfg.copyWith(printCopies: v)),
+                ),
+              ],
             ),
             const SizedBox(height: 24),
 
@@ -280,6 +318,42 @@ class _PrinterSettingsPageState extends ConsumerState<PrinterSettingsPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _CopyStepper extends StatelessWidget {
+  const _CopyStepper({required this.value, required this.onChanged});
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            onPressed: value > 1 ? () => onChanged(value - 1) : null,
+            icon: const Icon(Icons.remove, size: 20),
+            tooltip: 'Kurangi',
+          ),
+          Text(
+            '$value',
+            style: const TextStyle(
+                fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          IconButton(
+            onPressed: value < 9 ? () => onChanged(value + 1) : null,
+            icon: const Icon(Icons.add, size: 20),
+            tooltip: 'Tambah',
+          ),
+        ],
       ),
     );
   }

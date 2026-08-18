@@ -1,7 +1,7 @@
 class ApiEndpoints {
   ApiEndpoints._();
 
-  static const String baseUrl = 'https://shadja.codingajaindonesia.my.id';
+  static const String baseUrl = 'https://shadja.my.id';
   static const String apiPrefix = '/api/v1';
 
   static String _path(String endpoint) => endpoint;

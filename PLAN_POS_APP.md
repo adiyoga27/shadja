@@ -17,7 +17,7 @@
 | Desain | Modern UI, clean, flat/minimal shadow, rounded corner |
 | Mode Kerja (scope saat ini) | **Online saja** — semua aksi langsung ke API, tanpa antrian offline |
 | Mode Kerja (fase lanjutan, belum dikerjakan) | Offline-first + sync via endpoint `/sync` (lihat Bagian 11, Fase 6) |
-| Backend API | `https://shadja.codingajaindonesia.my.id` (lihat Bagian 6) |
+| Backend API | `https://shadja.my.id` (lihat Bagian 6) |
 
 > **Catatan scope:** Untuk tahap pengembangan saat ini, aplikasi dibangun **mode online saja**. Semua request (login, ambil menu, buat order, bayar, reservasi) langsung memanggil API dan menampilkan loading/error state seperti biasa — belum ada local database, antrian aksi pending, atau logic sync. Dukungan offline dirancang sebagai **fase lanjutan terpisah** (lihat Fase 6) supaya arsitektur awal tetap simpel dan cepat selesai.
 
@@ -169,7 +169,7 @@ class AppColors {
 
 ## 6. Integrasi API
 
-**Base URL:** `https://shadja.codingajaindonesia.my.id`
+**Base URL:** `https://shadja.my.id`
 **Prefix:** `/api/v1`
 **Auth:** Bearer Token (Laravel Sanctum-style token, didapat dari login/register, dikirim di header `Authorization: Bearer {token}`)
 **Header wajib di semua request:** `Content-Type: application/json`, `Accept: application/json`
@@ -497,5 +497,5 @@ Ketika memakai dokumen ini sebagai prompt ke AI coding assistant, gunakan urutan
 
 ---
 
-*Dokumen ini disusun berdasarkan dokumentasi API resmi per 8 Agustus 2026: `https://shadja.codingajaindonesia.my.id/docs`*
+*Dokumen ini disusun berdasarkan dokumentasi API resmi per 8 Agustus 2026: `https://shadja.my.id/docs`*
 *Revisi: scope dipersempit ke **mode online-only** untuk tahap pengembangan saat ini + catatan rekomendasi snapshot data pada `order_items`.*
