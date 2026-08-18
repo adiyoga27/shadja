@@ -239,12 +239,17 @@ class _TableGrid extends StatelessWidget {
       itemBuilder: (context, index) {
         final t = tables[index];
         final selected = selectedId == t.id;
+        final occupied = t.status != 'kosong';
         return GestureDetector(
           onTap: () => onSelect(t.id),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             decoration: BoxDecoration(
-              color: selected ? AppColors.primaryBg : AppColors.surface,
+              color: selected
+                  ? AppColors.primaryBg
+                  : occupied
+                      ? AppColors.surfaceAlt
+                      : AppColors.surface,
               border: Border.all(
                 color: selected ? AppColors.primary : AppColors.border,
                 width: selected ? 2 : 1,
@@ -259,13 +264,21 @@ class _TableGrid extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: selected ? AppColors.primary : AppColors.textPrimary,
+                    color: occupied && !selected
+                        ? AppColors.textHint
+                        : selected
+                            ? AppColors.primary
+                            : AppColors.textPrimary,
                   ),
                 ),
                 Text(
-                  '${t.capacity} kursi',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary),
+                  occupied ? 'Terisi' : '${t.capacity} kursi',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: occupied && !selected
+                          ? AppColors.danger
+                          : AppColors.textSecondary,
+                      fontWeight: occupied ? FontWeight.w600 : null),
                 ),
               ],
             ),

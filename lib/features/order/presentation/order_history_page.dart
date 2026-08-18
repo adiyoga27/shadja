@@ -9,6 +9,7 @@ import 'package:shadja/features/order/presentation/order_provider.dart';
 import 'package:shadja/shared/widgets/empty_state.dart';
 import 'package:shadja/shared/widgets/loading_state.dart';
 import 'package:shadja/shared/widgets/status_badge.dart';
+import 'package:shadja/shared/widgets/shell_drawer_button.dart';
 
 class OrderHistoryPage extends ConsumerStatefulWidget {
   const OrderHistoryPage({super.key});
@@ -25,6 +26,7 @@ class _OrderHistoryPageState extends ConsumerState<OrderHistoryPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Riwayat Order'),
+        leading: const ShellDrawerButton(),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, size: 20),
@@ -205,12 +207,16 @@ class _OrderTile extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          order.orderNumber ?? 'Order #${order.id}',
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                        Flexible(
+                          child: Text(
+                            order.orderNumber ?? 'Order #${order.id}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 8),

@@ -9,6 +9,7 @@ import 'package:shadja/features/reservation/presentation/reservation_provider.da
 import 'package:shadja/shared/widgets/empty_state.dart';
 import 'package:shadja/shared/widgets/loading_state.dart';
 import 'package:shadja/shared/widgets/status_badge.dart';
+import 'package:shadja/shared/widgets/shell_drawer_button.dart';
 
 class ReservationListPage extends ConsumerWidget {
   const ReservationListPage({super.key});
@@ -20,6 +21,7 @@ class ReservationListPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Reservasi'),
+        leading: const ShellDrawerButton(),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, size: 20),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadja/core/constants/app_colors.dart';
 import 'package:shadja/features/printer/printer_service.dart';
+import 'package:shadja/shared/widgets/shell_drawer_button.dart';
 
 class PrinterSettingsPage extends ConsumerStatefulWidget {
   const PrinterSettingsPage({super.key});
@@ -85,7 +86,10 @@ class _PrinterSettingsPageState extends ConsumerState<PrinterSettingsPage> {
     _syncControllers(cfg);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pengaturan Printer')),
+      appBar: AppBar(
+        title: const Text('Pengaturan Printer'),
+        leading: const ShellDrawerButton(),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

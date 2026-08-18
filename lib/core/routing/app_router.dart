@@ -22,6 +22,7 @@ import 'package:shadja/features/reservation/presentation/reservation_form_page.d
 import 'package:shadja/features/reservation/presentation/reservation_detail_page.dart';
 import 'package:shadja/features/printer_settings/presentation/printer_scan_page.dart';
 import 'package:shadja/features/printer/printer_service.dart';
+import 'package:shadja/shared/widgets/shell_drawer_button.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -139,6 +140,8 @@ class MainShell extends ConsumerStatefulWidget {
 }
 
 class _MainShellState extends ConsumerState<MainShell> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+
   @override
   void initState() {
     super.initState();
@@ -166,39 +169,11 @@ class _MainShellState extends ConsumerState<MainShell> {
 
     return ResponsiveLayout(
       mobile: (c) => Scaffold(
-        body: widget.child,
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: index,
-          onDestinationSelected: (i) => _onTap(context, i),
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.restaurant),
-              selectedIcon: Icon(Icons.restaurant, color: AppColors.primary),
-              label: 'Kasir',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.assignment_outlined),
-              selectedIcon:
-                  Icon(Icons.assignment_outlined, color: AppColors.primary),
-              label: 'Order',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.calendar_month),
-              selectedIcon:
-                  Icon(Icons.calendar_month, color: AppColors.primary),
-              label: 'Reservasi',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.print_outlined),
-              selectedIcon: Icon(Icons.print_outlined, color: AppColors.primary),
-              label: 'Printer',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person_outline, color: AppColors.primary),
-              label: 'Profil',
-            ),
-          ],
+        key: _scaffoldKey,
+        drawer: _buildDrawer(context, index),
+        body: ShellDrawerScope(
+          openDrawer: () => _scaffoldKey.currentState?.openDrawer(),
+          child: widget.child,
         ),
       ),
       tabletLandscape: (c) => Scaffold(
@@ -247,6 +222,70 @@ class _MainShellState extends ConsumerState<MainShell> {
               ),
             ),
             Expanded(child: widget.child),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawer(BuildContext context, int index) {
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+              child: Text(
+                'Menu',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary.withValues(alpha: 0.85),
+                ),
+              ),
+            ),
+            const Divider(height: 1),
+            _DrawerItem(
+                icon: Icons.restaurant,
+                label: 'Kasir',
+                selected: index == 0,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _onTap(context, 0);
+                }),
+            _DrawerItem(
+                icon: Icons.assignment_outlined,
+                label: 'Order',
+                selected: index == 1,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _onTap(context, 1);
+                }),
+            _DrawerItem(
+                icon: Icons.calendar_month,
+                label: 'Reservasi',
+                selected: index == 2,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _onTap(context, 2);
+                }),
+            _DrawerItem(
+                icon: Icons.print_outlined,
+                label: 'Printer',
+                selected: index == 3,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _onTap(context, 3);
+                }),
+            _DrawerItem(
+                icon: Icons.person_outline,
+                label: 'Profil',
+                selected: index == 4,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _onTap(context, 4);
+                }),
           ],
         ),
       ),
@@ -319,6 +358,59 @@ class _SideNavItem extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DrawerItem extends StatelessWidget {
+  const _DrawerItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      child: Material(
+        color: selected ? AppColors.primaryBg : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 22,
+                  color:
+                      selected ? AppColors.primary : AppColors.textSecondary,
+                ),
+                const SizedBox(width: 14),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: selected
+                        ? AppColors.primary
+                        : AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

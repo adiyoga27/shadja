@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shadja/core/constants/app_colors.dart';
 import 'package:shadja/features/auth/presentation/auth_provider.dart';
 import 'package:shadja/features/printer/printer_service.dart';
+import 'package:shadja/shared/widgets/shell_drawer_button.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -15,7 +16,10 @@ class ProfilePage extends ConsumerWidget {
     final user = auth.user;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profil')),
+      appBar: AppBar(
+        title: const Text('Profil'),
+        leading: const ShellDrawerButton(),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

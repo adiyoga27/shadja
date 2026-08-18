@@ -11,6 +11,7 @@ import 'package:shadja/features/menu/presentation/menu_provider.dart';
 import 'package:shadja/features/menu/presentation/widgets/menu_card.dart';
 import 'package:shadja/shared/widgets/empty_state.dart';
 import 'package:shadja/shared/widgets/loading_state.dart';
+import 'package:shadja/shared/widgets/shell_drawer_button.dart';
 
 class KasirPage extends ConsumerStatefulWidget {
   const KasirPage({super.key});
@@ -21,11 +22,52 @@ class KasirPage extends ConsumerStatefulWidget {
 
 class _KasirPageState extends ConsumerState<KasirPage> {
   final _searchCtrl = TextEditingController();
+  OverlayEntry? _toastEntry;
 
   @override
   void dispose() {
+    _toastEntry?.remove();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _showTopToast(String message) {
+    _toastEntry?.remove();
+    final overlay = Overlay.of(context);
+    final top = MediaQuery.paddingOf(context).top + kToolbarHeight + 8;
+    final entry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: top,
+        left: 16,
+        right: 16,
+        child: IgnorePointer(
+          child: Material(
+            color: AppColors.textPrimary.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(10),
+            elevation: 6,
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    _toastEntry = entry;
+    overlay.insert(entry);
+    Future.delayed(const Duration(milliseconds: 1400), () {
+      if (entry.mounted) entry.remove();
+      if (identical(_toastEntry, entry)) _toastEntry = null;
+    });
   }
 
   @override
@@ -43,6 +85,7 @@ class _KasirPageState extends ConsumerState<KasirPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kasir'),
+        leading: const ShellDrawerButton(),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, size: 20),
@@ -82,6 +125,7 @@ class _KasirPageState extends ConsumerState<KasirPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kasir'),
+        leading: const ShellDrawerButton(),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, size: 20),
@@ -221,16 +265,8 @@ class _KasirPageState extends ConsumerState<KasirPage> {
   void _addItem(MenuItemModel item) {
     ref.read(cartProvider.notifier).add(item);
     final mq = _qtyInCart(item);
-    final msg = mq > 0 ? '${item.name} (×${mq + 1})' : '${item.name} ditambahkan';
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(msg),
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(milliseconds: 1200),
-        ),
-      );
+    final msg = mq > 1 ? '${item.name} (×$mq)' : '${item.name} ditambahkan';
+    _showTopToast(msg);
   }
 
   int _qtyInCart(MenuItemModel item) {
@@ -291,7 +327,7 @@ class _CategoryTabs extends StatelessWidget {
               name: chip.name,
               selected: selected,
               onTap: chip.id == null
-                  ? null
+                  ? () => ref.read(menuProvider.notifier).selectAll()
                   : () => ref
                       .read(menuProvider.notifier)
                       .selectCategory(chip.id),

@@ -223,7 +223,9 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                 : null,
           ),
           if (_orderType == 'dine-in') ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
+            const _SectionTitle(title: 'Pilih Meja'),
+            const SizedBox(height: 8),
             _TableSelector(
               selectedId: _selectedTableId,
               onChanged: (id) => setState(() => _selectedTableId = id),
@@ -473,12 +475,11 @@ class _TableSelector extends ConsumerWidget {
     final tablesAsync = ref.watch(tablesProvider);
     return tablesAsync.when(
       data: (tables) {
-        final available = tables.where((t) => t.status == 'kosong').toList();
-        if (available.isEmpty) {
+        if (tables.isEmpty) {
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 8),
-            child: Text('Tidak ada meja kosong.',
-                style: TextStyle(color: AppColors.danger, fontSize: 13)),
+            child: Text('Belum ada meja.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
           );
         }
         return Column(
@@ -487,8 +488,9 @@ class _TableSelector extends ConsumerWidget {
             Wrap(
               spacing: 10,
               runSpacing: 10,
-              children: available.map((t) {
+              children: tables.map((t) {
                 final selected = selectedId == t.id;
+                final occupied = t.status != 'kosong';
                 return GestureDetector(
                   onTap: () => onChanged(t.id),
                   child: AnimatedContainer(
@@ -496,9 +498,15 @@ class _TableSelector extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 10),
                     decoration: BoxDecoration(
-                      color: selected ? AppColors.primaryBg : AppColors.surface,
+                      color: selected
+                          ? AppColors.primaryBg
+                          : occupied
+                              ? AppColors.surfaceAlt
+                              : AppColors.surface,
                       border: Border.all(
-                        color: selected ? AppColors.primary : AppColors.border,
+                        color: selected
+                            ? AppColors.primary
+                            : AppColors.border,
                         width: selected ? 2 : 1,
                       ),
                       borderRadius: BorderRadius.circular(12),
@@ -511,9 +519,11 @@ class _TableSelector extends ConsumerWidget {
                               ? Icons.check_circle
                               : Icons.table_bar_outlined,
                           size: 18,
-                          color: selected
-                              ? AppColors.primary
-                              : AppColors.textSecondary,
+                          color: occupied && !selected
+                              ? AppColors.textHint
+                              : selected
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary,
                         ),
                         const SizedBox(width: 6),
                         Text(
@@ -521,11 +531,24 @@ class _TableSelector extends ConsumerWidget {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: selected
-                                ? AppColors.primary
-                                : AppColors.textPrimary,
+                            color: occupied && !selected
+                                ? AppColors.textHint
+                                : selected
+                                    ? AppColors.primary
+                                    : AppColors.textPrimary,
                           ),
                         ),
+                        if (occupied) ...[
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Terisi',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.danger,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -546,7 +569,25 @@ class _TableSelector extends ConsumerWidget {
             height: 20,
             child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
       ),
-      error: (_, _) => const SizedBox.shrink(),
+      error: (_, _) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            const Icon(Icons.error_outline, size: 18, color: AppColors.danger),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Gagal memuat daftar meja. Periksa koneksi.',
+                style: TextStyle(color: AppColors.danger, fontSize: 13),
+              ),
+            ),
+            TextButton(
+              onPressed: () => ref.invalidate(tablesProvider),
+              child: const Text('Coba lagi'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

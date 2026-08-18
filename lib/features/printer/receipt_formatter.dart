@@ -64,7 +64,6 @@ class ReceiptFormatter {
     int paperWidth = 80,
   }) {
     List<int> bytes = [];
-    final is58 = paperWidth == 58;
     final bodyFont = PosFontType.fontA;
 
     PosStyles bodyStyle() => PosStyles(fontType: bodyFont);
@@ -109,35 +108,20 @@ class ReceiptFormatter {
     add(generator.hr());
 
     for (final item in order.orderItems) {
-      if (is58) {
-        // 58mm compact layout: two-line format to avoid cutoff
-        add(generator.text(
-          item.menuItemName,
-          styles: bodyStyle(),
-        ));
-        add(generator.row([
-          PosColumn(
-              text: '${item.quantity}x${Formatters.rupiah(item.price)}',
-              width: 8,
-              styles: bodyStyle()),
-          PosColumn(
-              text: Formatters.rupiah(item.subtotal),
-              width: 4,
-              styles: bodyRight()),
-        ]));
-      } else {
-        add(generator.row([
-          PosColumn(text: item.menuItemName, width: 6, styles: bodyStyle()),
-          PosColumn(
-              text: '${item.quantity} x ${Formatters.rupiah(item.price)}',
-              width: 3,
-              styles: bodyStyle()),
-          PosColumn(
-              text: Formatters.rupiah(item.subtotal),
-              width: 3,
-              styles: bodyRight()),
-        ]));
-      }
+      add(generator.text(
+        item.menuItemName,
+        styles: bodyStyle(),
+      ));
+      add(generator.row([
+        PosColumn(
+            text: '${item.quantity}x${Formatters.rupiah(item.price)}',
+            width: 7,
+            styles: bodyStyle()),
+        PosColumn(
+            text: Formatters.rupiah(item.subtotal),
+            width: 5,
+            styles: bodyRight()),
+      ]));
       if (item.notes != null && item.notes!.isNotEmpty) {
         add(generator.text(
           '  ^ ${item.notes}',

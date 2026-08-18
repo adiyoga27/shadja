@@ -66,10 +66,7 @@ class MenuNotifier extends StateNotifier<MenuState> {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final cats = await repo.fetchMenu();
-      state = MenuState(
-        categories: cats,
-        selectedCategoryId: cats.isNotEmpty ? cats.first.id : null,
-      );
+      state = MenuState(categories: cats);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
@@ -77,6 +74,10 @@ class MenuNotifier extends StateNotifier<MenuState> {
 
   void selectCategory(int? id) {
     state = state.copyWith(selectedCategoryId: id);
+  }
+
+  void selectAll() {
+    state = state.copyWith(clearSelection: true);
   }
 
   void setSearch(String query) {
