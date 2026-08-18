@@ -69,29 +69,41 @@ class ReceiptFormatter {
     PosStyles bodyStyle() => PosStyles(fontType: bodyFont);
     PosStyles bodyRight() =>
         PosStyles(fontType: bodyFont, align: PosAlign.right);
-    PosStyles centerStyle() => PosStyles(fontType: bodyFont, align: PosAlign.center);
+    PosStyles centerStyle() =>
+        PosStyles(fontType: bodyFont, align: PosAlign.center);
+    PosStyles boldStyle() => PosStyles(fontType: bodyFont, bold: true);
 
     void add(List<int> b) => bytes.addAll(b);
 
+    // Header
     add(generator.text(
       storeName,
-      styles: const PosStyles(bold: true, align: PosAlign.center),
+      styles: const PosStyles(
+        bold: true,
+        align: PosAlign.center,
+        height: PosTextSize.size2,
+      ),
     ));
-    add(generator.text(
-      storeAddress,
-      styles: centerStyle(),
-    ));
-    add(generator.text(
-      'Telp: $storePhone',
-      styles: centerStyle(),
-    ));
+    if (storeAddress.isNotEmpty) {
+      add(generator.text(storeAddress, styles: centerStyle()));
+    }
+    if (storePhone.isNotEmpty) {
+      add(generator.text('Telp: $storePhone', styles: centerStyle()));
+    }
     add(generator.hr());
 
-    add(generator.text('No: ${order.orderNumber ?? order.id}',
-        styles: bodyStyle()));
-    add(generator.text(
-        'Tgl: ${order.createdAt != null ? _dateStr(order.createdAt!) : '-'}',
-        styles: bodyStyle()));
+    // Order info
+    add(generator.row([
+      PosColumn(
+          text: 'No: ${order.orderNumber ?? order.id}',
+          width: 6,
+          styles: bodyStyle()),
+      PosColumn(
+          text:
+              'Tgl: ${order.createdAt != null ? _dateStr(order.createdAt!) : '-'}',
+          width: 6,
+          styles: bodyRight()),
+    ]));
     add(generator.text('Tipe: ${_orderTypeLabel(order.orderType)}',
         styles: bodyStyle()));
     if (order.customerName != null) {
@@ -107,6 +119,7 @@ class ReceiptFormatter {
     }
     add(generator.hr());
 
+    // Items
     for (final item in order.orderItems) {
       add(generator.text(
         item.menuItemName,
@@ -131,6 +144,7 @@ class ReceiptFormatter {
     }
     add(generator.hr());
 
+    // Summary
     add(generator.row([
       PosColumn(text: 'Subtotal', width: 6, styles: bodyStyle()),
       PosColumn(
@@ -147,24 +161,29 @@ class ReceiptFormatter {
             styles: bodyRight()),
       ]));
     }
-    add(generator.hr());
+    add(generator.text('=' * _maxChars(paperWidth),
+        styles: boldStyle()));
     add(generator.row([
       PosColumn(
           text: 'TOTAL',
           width: 6,
-          styles: const PosStyles(bold: true)),
+          styles: PosStyles(fontType: bodyFont, bold: true, height: PosTextSize.size2)),
       PosColumn(
           text: Formatters.rupiah(order.total),
           width: 6,
-          styles: const PosStyles(
+          styles: PosStyles(
+              fontType: bodyFont,
               bold: true,
-              align: PosAlign.right)),
+              align: PosAlign.right,
+              height: PosTextSize.size2)),
     ]));
-    add(generator.hr());
+    add(generator.text('=' * _maxChars(paperWidth),
+        styles: boldStyle()));
 
     if (order.payments.isNotEmpty) {
       for (final p in order.payments) {
-        add(generator.text('${p.method.toUpperCase()}: ${Formatters.rupiah(p.amount)}',
+        add(generator.text(
+            '${p.method.toUpperCase()}: ${Formatters.rupiah(p.amount)}',
             styles: bodyStyle()));
         if (p.reference != null) {
           add(generator.text('Ref: ${p.reference}', styles: bodyStyle()));
@@ -177,18 +196,22 @@ class ReceiptFormatter {
       add(generator.hr());
     }
 
+    // Footer
+    add(generator.feed(1));
     add(generator.text(
       'Terima kasih',
       styles: PosStyles(align: PosAlign.center, bold: true, fontType: bodyFont),
     ));
     add(generator.text(
-      'Barokallah',
-      styles: const PosStyles(align: PosAlign.center),
+      'Semoga harimu menyenangkan',
+      styles: centerStyle(),
     ));
-    add(generator.feed(1));
+    add(generator.feed(2));
 
     return bytes;
   }
+
+  static int _maxChars(int paperWidth) => paperWidth == 58 ? 32 : 48;
 
   // --- Text formatter (debug only) ---
   static const _line80 =
@@ -269,6 +292,7 @@ class ReceiptFormatter {
     }
 
     center('Terima kasih');
+    center('Semoga harimu menyenangkan');
     sb.writeln(line);
     sb.writeln();
 

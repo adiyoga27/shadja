@@ -1,7 +1,15 @@
+import 'package:shadja/core/constants/api_endpoints.dart';
+
 num _parseNum(dynamic value) {
   if (value is num) return value;
   if (value is String) return num.tryParse(value) ?? 0;
   return 0;
+}
+
+String? _imageUrl(String? image) {
+  if (image == null || image.isEmpty) return null;
+  if (image.startsWith('http://') || image.startsWith('https://')) return image;
+  return '${ApiEndpoints.baseUrl}/storage/$image';
 }
 
 class MenuItemModel {
@@ -29,7 +37,7 @@ class MenuItemModel {
         id: ((json['id'] as num).toInt()),
         name: json['name'] as String,
         price: _parseNum(json['price']),
-        image: json['image'] as String?,
+        image: _imageUrl(json['image'] as String?),
         description: json['description'] as String?,
         isActive: (json['is_active'] as bool?) ?? true,
         categoryId: json['category_id'] != null ? (json['category_id'] as num).toInt() : null,

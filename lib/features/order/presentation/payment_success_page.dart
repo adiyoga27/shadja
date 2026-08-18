@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadja/core/constants/app_colors.dart';
 import 'package:shadja/core/utils/formatters.dart';
-import 'package:shadja/features/printer/presentation/print_dialog.dart';
+import 'package:shadja/features/printer/printer_service.dart';
 import 'package:shadja/features/order/presentation/order_provider.dart';
 
 class PaymentSuccessPage extends ConsumerWidget {
@@ -14,6 +14,9 @@ class PaymentSuccessPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final orderAsync = ref.watch(orderDetailProvider(orderId));
+    final printer = ref.watch(printerProvider);
+    final connected = printer.status == PrinterConnectionStatus.connected;
+    final cfg = printer.config;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -62,13 +65,81 @@ class PaymentSuccessPage extends ConsumerWidget {
                       color: AppColors.primary,
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: connected
+                          ? AppColors.successBg
+                          : AppColors.surfaceAlt,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color:
+                            connected ? AppColors.success : AppColors.border,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          cfg.connectionType == PrinterConnectionType.network
+                              ? (connected
+                                  ? Icons.lan_outlined
+                                  : Icons.lan_outlined)
+                              : (connected
+                                  ? Icons.bluetooth_connected
+                                  : Icons.bluetooth_disabled),
+                          size: 18,
+                          color:
+                              connected ? AppColors.success : AppColors.textHint,
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            connected
+                                ? 'Printer: ${cfg.name ?? cfg.displayAddress} (Terhubung)'
+                                : 'Printer belum terhubung',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: connected
+                                  ? AppColors.success
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () async {
-                            await PrintDialog.show(context, order: order);
+                            try {
+                              await ref
+                                  .read(printerProvider.notifier)
+                                  .printReceipt(order);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context)
+                                  ..hideCurrentSnackBar()
+                                  ..showSnackBar(const SnackBar(
+                                    content: Text('Struk berhasil dicetak.'),
+                                    backgroundColor: AppColors.success,
+                                  ));
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context)
+                                  ..hideCurrentSnackBar()
+                                  ..showSnackBar(SnackBar(
+                                    content: Text('Gagal cetak: $e'),
+                                    backgroundColor: AppColors.danger,
+                                  ));
+                              }
+                            }
                           },
                           icon: const Icon(Icons.print_outlined, size: 18),
                           label: const Text('Cetak Struk'),

@@ -10,7 +10,6 @@ import 'package:shadja/features/order/presentation/order_provider.dart';
 import 'package:shadja/features/cart/presentation/cart_item_tile.dart';
 import 'package:shadja/features/order/presentation/payment_method_sheet.dart';
 import 'package:shadja/features/reservation/presentation/reservation_provider.dart';
-import 'package:shadja/features/printer/presentation/print_dialog.dart';
 
 class CheckoutPage extends ConsumerStatefulWidget {
   const CheckoutPage({super.key});
@@ -102,7 +101,6 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     if (payment != null && payment.success && mounted) {
       ref.read(cartProvider.notifier).clear();
       ref.read(orderHistoryProvider.notifier).load();
-      await PrintDialog.show(context, order: order);
       if (mounted) context.go('/payment-success/${order.id}');
     }
     ref.read(checkoutProvider.notifier).reset();
