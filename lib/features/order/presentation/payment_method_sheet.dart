@@ -23,6 +23,7 @@ class PaymentMethodSheet extends ConsumerStatefulWidget {
 class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
   String _method = 'cash';
   bool _processing = false;
+  final _cashCtrl = TextEditingController();
 
   static const _methods = [
     ('cash', 'Tunai', Icons.payments, AppColors.success),
@@ -31,12 +32,42 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
     ('card', 'Kartu', Icons.credit_card, AppColors.warning),
   ];
 
+  @override
+  void dispose() {
+    _cashCtrl.dispose();
+    super.dispose();
+  }
+
+  num get _cashReceived {
+    final raw = _cashCtrl.text.trim();
+    if (raw.isEmpty) return 0;
+    return num.tryParse(raw.replaceAll(RegExp(r'[^\d]'), '')) ?? 0;
+  }
+
+  num get _change => _cashReceived - widget.order.total;
+
+  String? get _cashError {
+    if (_method != 'cash') return null;
+    if (_cashReceived < widget.order.total) {
+      return 'Uang diterima kurang dari total tagihan';
+    }
+    return null;
+  }
+
   Future<void> _pay() async {
+    if (_method == 'cash' && _cashError != null) {
+      setState(() {});
+      return;
+    }
     setState(() => _processing = true);
     final payment = await ref.read(checkoutProvider.notifier).pay(
           orderId: widget.order.id,
           method: _method,
           amount: widget.order.total,
+          cashReceived: _method == 'cash' && _cashReceived > 0
+              ? _cashReceived
+              : null,
+          change: _method == 'cash' && _change > 0 ? _change : null,
         );
     setState(() => _processing = false);
     if (payment != null && mounted) {
@@ -151,7 +182,50 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
                 );
               },
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+            if (_method == 'cash') ...[
+              TextFormField(
+                controller: _cashCtrl,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'Uang Diterima',
+                  hintText: 'nominal yang dibayar pelanggan',
+                  prefixIcon: const Icon(Icons.payments_outlined, size: 18),
+                  errorText: _cashError,
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 8),
+              if (_cashReceived > 0)
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.successBg,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Kembalian',
+                        style: TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        _change >= 0
+                            ? Formatters.rupiah(_change)
+                            : '- ${Formatters.rupiah(-_change)}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.success,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 16),
+            ],
             FilledButton.icon(
               onPressed: _processing ? null : _pay,
               icon: _processing

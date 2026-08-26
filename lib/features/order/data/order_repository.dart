@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadja/core/constants/api_endpoints.dart';
 import 'package:shadja/core/network/dio_client.dart';
+import 'package:shadja/features/order/data/additional_cost_model.dart';
 import 'package:shadja/features/order/data/order_model.dart';
 
 class CreateOrderRequest {
@@ -14,6 +15,8 @@ class CreateOrderRequest {
     this.notes,
     this.discount = 0,
     this.restaurantTableId,
+    this.serviceChargeRate,
+    this.additionalCostId,
   });
 
   final String orderType;
@@ -24,6 +27,8 @@ class CreateOrderRequest {
   final String? notes;
   final num discount;
   final int? restaurantTableId;
+  final num? serviceChargeRate;
+  final int? additionalCostId;
 }
 
 class CreateOrderItem {
@@ -61,6 +66,14 @@ class OrderRepository {
     return e.toString();
   }
 
+  Future<List<AdditionalCostModel>> fetchAdditionalCosts() async {
+    final response = await _dio.get(ApiEndpoints.additionalCosts);
+    final list = response.data as List<dynamic>;
+    return list
+        .map((e) => AdditionalCostModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<List<OrderModel>> fetchOrders() async {
     final response = await _dio.get(ApiEndpoints.orders);
     final list = response.data as List<dynamic>;
@@ -95,6 +108,10 @@ class OrderRepository {
           if (req.discount > 0) 'discount': req.discount,
           if (req.restaurantTableId != null)
             'restaurant_table_id': req.restaurantTableId,
+          if (req.serviceChargeRate != null && req.serviceChargeRate! > 0)
+            'service_charge_rate': req.serviceChargeRate,
+          if (req.additionalCostId != null)
+            'additional_cost_id': req.additionalCostId,
         },
       );
       return OrderModel.fromJson(response.data as Map<String, dynamic>);
@@ -108,6 +125,8 @@ class OrderRepository {
     required String method,
     required num amount,
     String? reference,
+    num? cashReceived,
+    num? change,
   }) async {
     try {
       final response = await _dio.post(
@@ -116,6 +135,8 @@ class OrderRepository {
           'order_id': orderId,
           'method': method,
           'amount': amount,
+          'cash_received': ?cashReceived,
+          'change': ?change,
           'reference': ?reference,
         },
       );

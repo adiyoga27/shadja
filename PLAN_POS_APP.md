@@ -223,10 +223,15 @@ Body `POST /orders`:
   "delivery_address": "wajib jika order_type=delivery",
   "customer_name": "John Doe",
   "customer_phone": "08123456789",
-  "discount": 5000
+  "discount": 5000,
+  "service_charge_rate": 5,        // opsional: service charge dalam persen (5 = 5%)
+  "additional_cost_id": 1          // opsional: ID biaya tambahan dari master data (lihat GET /additional-costs)
 }
 ```
 Response order berisi: `order_number, order_status, subtotal, discount, tax, total, order_items[], payments[]`.
+> **Biaya tambahan / service charge** (dokumentasi API terbaru 26 Aug 2026):
+> - `GET /api/v1/additional-costs` → list biaya tambahan aktif: `[{ id, name, rate, sort_order }]` (contoh: `{ "id": 1, "name": "Service Charge", "rate": 5 }`).
+> - Di Flutter: halaman Checkout memuat list dari API (`additionalCostsProvider`), kasir memilih biaya tambahan, lalu app mengirim `additional_cost_id` (+ `service_charge_rate` sebagai fallback) saat create order.
 
 > **order_status** yang teramati: `baru` (kemungkinan ada status lanjutan seperti `diproses`, `selesai`, `dibatalkan` — koordinasikan dengan backend/tambahkan enum saat testing nyata).
 
@@ -255,9 +260,10 @@ Saat ini contoh response `order_items` hanya menyertakan `menu_item_id, quantity
 
 Body:
 ```json
-{ "order_id": 1, "method": "qris", "amount": 55500, "reference": "opsional" }
+{ "order_id": 1, "method": "cash", "amount": 22200, "cash_received": 50000, "change": 27800, "reference": "opsional" }
 ```
 `method` yang didukung: `cash`, `qris`, `transfer`, `card`.
+> **Kembalian tunai** (dokumentasi API terbaru 26 Aug 2026): untuk `method=cash` kirim `cash_received` (uang yang diterima) dan `change` (kembalian = cash_received − amount). Opsional & diabaikan untuk non-tunai. Response payment menyertakan `cash_received` & `change`. Di Flutter: input "Uang Diterima" + tampil "Kembalian" ada di bottom sheet pembayaran, dan tampil di struk & detail order.
 
 ### 6.5 Profile
 

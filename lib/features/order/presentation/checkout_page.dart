@@ -5,6 +5,7 @@ import 'package:shadja/core/constants/app_colors.dart';
 import 'package:shadja/core/responsive/responsive_layout.dart';
 import 'package:shadja/core/utils/formatters.dart';
 import 'package:shadja/features/cart/cart_provider.dart';
+import 'package:shadja/features/order/data/additional_cost_model.dart';
 import 'package:shadja/features/order/data/order_repository.dart';
 import 'package:shadja/features/order/presentation/order_provider.dart';
 import 'package:shadja/features/cart/presentation/cart_item_tile.dart';
@@ -27,6 +28,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   String _orderType = 'dine-in';
   String _discountType = 'rp';
   int? _selectedTableId;
+  int? _selectedAdditionalCostId;
 
   @override
   void dispose() {
@@ -48,7 +50,23 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     return d;
   }
 
-  num get _total => ref.read(cartProvider).subtotal - _discount;
+  AdditionalCostModel? _additionalCost(List<AdditionalCostModel> costs) {
+    if (_selectedAdditionalCostId == null) return null;
+    for (final c in costs) {
+      if (c.id == _selectedAdditionalCostId) return c;
+    }
+    return null;
+  }
+
+  num _serviceCharge(List<AdditionalCostModel> costs) {
+    final cost = _additionalCost(costs);
+    if (cost == null) return 0;
+    final base = ref.read(cartProvider).subtotal - _discount;
+    return (base * cost.rate / 100).round();
+  }
+
+  num _total(List<AdditionalCostModel> costs) =>
+      ref.read(cartProvider).subtotal - _discount + _serviceCharge(costs);
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -63,6 +81,9 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     }
     final cart = ref.read(cartProvider);
     if (cart.isEmpty) return;
+
+    final costs = await ref.read(additionalCostsProvider.future).catchError((_) => <AdditionalCostModel>[]);
+    final selectedCost = _additionalCost(costs);
 
     final req = CreateOrderRequest(
       orderType: _orderType,
@@ -79,6 +100,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
       discount: _discount,
       restaurantTableId: _orderType == 'dine-in' ? _selectedTableId : null,
+      serviceChargeRate: selectedCost?.rate,
+      additionalCostId: selectedCost?.id,
     );
 
     final order = await ref.read(checkoutProvider.notifier).submit(req);
@@ -303,6 +326,67 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
             ),
             onChanged: (_) => setState(() {}),
           ),
+          const SizedBox(height: 12),
+
+          // Additional costs (service charge dll) dari API
+          Consumer(
+            builder: (context, ref, _) {
+              final costsAsync = ref.watch(additionalCostsProvider);
+              return costsAsync.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: SizedBox(
+                      height: 20,
+                      child: Center(
+                          child: CircularProgressIndicator(strokeWidth: 2))),
+                ),
+                error: (_, _) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline,
+                          size: 18, color: AppColors.danger),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Gagal memuat biaya tambahan.',
+                          style:
+                              TextStyle(color: AppColors.danger, fontSize: 13),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            ref.invalidate(additionalCostsProvider),
+                        child: const Text('Coba lagi'),
+                      ),
+                    ],
+                  ),
+                ),
+                data: (costs) {
+                  if (costs.isEmpty) return const SizedBox.shrink();
+                  return DropdownButtonFormField<int>(
+                    initialValue: _selectedAdditionalCostId,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Biaya Tambahan (dari API)',
+                      prefixIcon:
+                          Icon(Icons.room_service_outlined, size: 18),
+                    ),
+                    items: [
+                      for (final c in costs)
+                        DropdownMenuItem(
+                          value: c.id,
+                          child: Text(
+                              '${c.name} (${c.rate}%) - Rp ${Formatters.rupiah(((ref.read(cartProvider).subtotal - _discount) * c.rate / 100).round())}'),
+                        ),
+                    ],
+                    onChanged: (v) =>
+                        setState(() => _selectedAdditionalCostId = v),
+                  );
+                },
+              );
+            },
+          ),
           const SizedBox(height: 20),
 
           // Summary
@@ -316,11 +400,49 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                     : 'Diskon',
                 value: '- ${Formatters.rupiah(_discount)}',
                 color: AppColors.danger),
+          Consumer(
+            builder: (context, ref, _) {
+              final costsAsync = ref.watch(additionalCostsProvider);
+              return costsAsync.when(
+                data: (costs) {
+                  final charge = _serviceCharge(costs);
+                  final cost = _additionalCost(costs);
+                  if (charge <= 0 || cost == null) {
+                    return const SizedBox.shrink();
+                  }
+                  return _PriceRow(
+                    label: '${cost.name} (${cost.rate}%)',
+                    value: Formatters.rupiah(charge),
+                    color: AppColors.info,
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
+              );
+            },
+          ),
           const Divider(height: 24),
-          _PriceRow(
-            label: 'Total',
-            value: Formatters.rupiah(_total),
-            isTotal: true,
+          Consumer(
+            builder: (context, ref, _) {
+              final costsAsync = ref.watch(additionalCostsProvider);
+              return costsAsync.when(
+                data: (costs) => _PriceRow(
+                  label: 'Total',
+                  value: Formatters.rupiah(_total(costs)),
+                  isTotal: true,
+                ),
+                loading: () => _PriceRow(
+                  label: 'Total',
+                  value: Formatters.rupiah(cart.subtotal - _discount),
+                  isTotal: true,
+                ),
+                error: (_, _) => _PriceRow(
+                  label: 'Total',
+                  value: Formatters.rupiah(cart.subtotal - _discount),
+                  isTotal: true,
+                ),
+              );
+            },
           ),
           const SizedBox(height: 20),
 

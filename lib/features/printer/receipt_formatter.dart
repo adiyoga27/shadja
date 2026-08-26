@@ -192,6 +192,14 @@ class ReceiptFormatter {
         add(generator.text(
             '${p.method.toUpperCase()}: ${Formatters.rupiah(p.amount)}',
             styles: bodyStyle()));
+        if (p.cashReceived != null) {
+          add(generator.text('Tunai diterima: ${Formatters.rupiah(p.cashReceived!)}',
+              styles: bodyStyle()));
+        }
+        if (p.change != null && p.change! > 0) {
+          add(generator.text('Kembalian: ${Formatters.rupiah(p.change!)}',
+              styles: bodyStyle()));
+        }
         if (p.reference != null) {
           add(generator.text('Ref: ${p.reference}', styles: bodyStyle()));
         }
@@ -289,6 +297,12 @@ class ReceiptFormatter {
       for (final p in order.payments) {
         sb.writeln(
             '${p.method.toUpperCase()}: ${Formatters.rupiah(p.amount)}');
+        if (p.cashReceived != null) {
+          sb.writeln('Tunai diterima: ${Formatters.rupiah(p.cashReceived!)}');
+        }
+        if (p.change != null && p.change! > 0) {
+          sb.writeln('Kembalian: ${Formatters.rupiah(p.change!)}');
+        }
         if (p.reference != null) sb.writeln('Ref: ${p.reference}');
       }
       sb.writeln(line);

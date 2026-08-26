@@ -179,6 +179,17 @@ class OrderDetailPage extends ConsumerWidget {
                         label: p.method.toUpperCase(),
                         value: Formatters.rupiah(p.amount),
                       ),
+                      if (p.cashReceived != null)
+                        _PriceRow(
+                          label: 'Tunai diterima',
+                          value: Formatters.rupiah(p.cashReceived!),
+                        ),
+                      if (p.change != null && p.change! > 0)
+                        _PriceRow(
+                          label: 'Kembalian',
+                          value: Formatters.rupiah(p.change!),
+                          color: AppColors.success,
+                        ),
                       if (p.reference != null)
                         _InfoRow(
                             icon: Icons.tag,

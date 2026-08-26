@@ -20,6 +20,9 @@ class ApiEndpoints {
   static String order(int id) => _path('/orders/$id');
   static String orderStatus(int id) => _path('/orders/$id/status');
 
+  // Additional costs (biaya tambahan, mis. service charge)
+  static String get additionalCosts => _path('/additional-costs');
+
   // Payments
   static String get paymentCallback => _path('/payments/callback');
   static String payment(int id) => _path('/payments/$id');

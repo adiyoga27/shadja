@@ -1,6 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shadja/features/order/data/additional_cost_model.dart';
 import 'package:shadja/features/order/data/order_model.dart';
 import 'package:shadja/features/order/data/order_repository.dart';
+
+final additionalCostsProvider =
+    FutureProvider<List<AdditionalCostModel>>((ref) async {
+  return ref.read(orderRepositoryProvider).fetchAdditionalCosts();
+});
 
 class OrderHistoryState {
   const OrderHistoryState({
@@ -110,6 +116,8 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
     required String method,
     required num amount,
     String? reference,
+    num? cashReceived,
+    num? change,
   }) async {
     state = CheckoutState(isLoading: true);
     try {
@@ -118,6 +126,8 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
         method: method,
         amount: amount,
         reference: reference,
+        cashReceived: cashReceived,
+        change: change,
       );
       state = CheckoutState(createdOrder: state.createdOrder);
       return payment;

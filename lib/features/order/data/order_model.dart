@@ -58,6 +58,8 @@ class PaymentModel {
     required this.amount,
     this.status = 'pending',
     this.reference,
+    this.cashReceived,
+    this.change,
   });
 
   final int id;
@@ -66,6 +68,8 @@ class PaymentModel {
   final num amount;
   final String status;
   final String? reference;
+  final num? cashReceived;
+  final num? change;
 
   factory PaymentModel.fromJson(Map<String, dynamic> json) => PaymentModel(
         id: (json['id'] as num).toInt(),
@@ -74,6 +78,11 @@ class PaymentModel {
         amount: _parseNum(json['amount']),
         status: (json['status'] as String?) ?? 'pending',
         reference: json['reference'] as String?,
+        cashReceived: json['cash_received'] != null
+            ? _parseNum(json['cash_received'])
+            : null,
+        change:
+            json['change'] != null ? _parseNum(json['change']) : null,
       );
 }
 
