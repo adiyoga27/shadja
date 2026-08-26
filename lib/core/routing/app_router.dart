@@ -181,7 +181,7 @@ class _MainShellState extends ConsumerState<MainShell> {
           children: [
             // Side navigation
             Container(
-              width: 78,
+              width: 112,
               decoration: const BoxDecoration(
                 color: AppColors.surface,
                 border:
@@ -189,8 +189,10 @@ class _MainShellState extends ConsumerState<MainShell> {
               ),
               child: SafeArea(
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    const SizedBox(height: 16),
+                    const _SideNavLogo(),
+                    const SizedBox(height: 24),
                     _SideNavItem(
                         icon: Icons.restaurant,
                         label: 'Kasir',
@@ -217,6 +219,7 @@ class _MainShellState extends ConsumerState<MainShell> {
                         label: 'Profil',
                         selected: index == 4,
                         onTap: () => _onTap(context, 4)),
+                    const SizedBox(height: 14),
                   ],
                 ),
               ),
@@ -317,6 +320,35 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 }
 
+class _SideNavLogo extends StatelessWidget {
+  const _SideNavLogo();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 46,
+      height: 46,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.primary, AppColors.primaryDark],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.35),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: const Icon(Icons.restaurant_menu,
+          color: Colors.white, size: 24),
+    );
+  }
+}
+
 class _SideNavItem extends StatelessWidget {
   const _SideNavItem({
     required this.icon,
@@ -332,32 +364,72 @@ class _SideNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primaryBg : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon,
-                size: 24,
-                color: selected ? AppColors.primary : AppColors.textSecondary),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: selected ? AppColors.primary : AppColors.textSecondary,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.primaryBg : Colors.transparent,
+              border: Border.all(
+                color: selected ? AppColors.primary : Colors.transparent,
+                width: 1.2,
               ),
+              borderRadius: BorderRadius.circular(20),
             ),
-          ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: selected
+                        ? const LinearGradient(
+                            colors: [AppColors.primary, AppColors.primaryDark],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : null,
+                    color: selected ? null : AppColors.surfaceAlt,
+                    boxShadow: selected
+                        ? [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.4),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 22,
+                    color: selected ? Colors.white : AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight:
+                        selected ? FontWeight.w700 : FontWeight.w500,
+                    color: selected
+                        ? AppColors.primaryDark
+                        : AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

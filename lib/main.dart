@@ -10,14 +10,21 @@ Future<void> main() async {
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     await windowManager.ensureInitialized();
     const options = WindowOptions(
-      fullScreen: true,
       center: true,
       skipTaskbar: false,
+      title: 'Shadja POS',
     );
     await windowManager.waitUntilReadyToShow(options, () async {
-      await windowManager.setFullScreen(true);
+      // Maksimalkan jendela (bukan fullscreen) sehingga title bar Windows
+      // tetap tampil dengan tombol minimize/maximize/exit (X).
       await windowManager.show();
+      await windowManager.maximize();
     });
+    // Tindakan pencegahan bila SC_MAXIMIZE belum terproses saat window tampil.
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (!await windowManager.isMaximized()) {
+      await windowManager.maximize();
+    }
   }
   initializeDateFormatting('id_ID').then((_) {
     runApp(const ProviderScope(child: ShadjaApp()));

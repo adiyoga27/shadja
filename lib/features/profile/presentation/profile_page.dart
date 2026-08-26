@@ -125,7 +125,19 @@ class ProfilePage extends ConsumerWidget {
                   ),
                 );
                 if (confirm == true) {
-                  await ref.read(authProvider.notifier).logout();
+                  try {
+                    await ref.read(authProvider.notifier).logout();
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Gagal keluar: $e'),
+                          backgroundColor: AppColors.danger,
+                        ),
+                      );
+                    }
+                    return;
+                  }
                   if (context.mounted) context.go('/login');
                 }
               },

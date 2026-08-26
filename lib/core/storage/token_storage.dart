@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class TokenStorage {
@@ -47,7 +48,15 @@ class TokenStorage {
 
   static Future<String?> getToken() => _storage.read(key: _keyToken);
 
-  static Future<void> clear() async => _storage.deleteAll();
+  // clear() dipakai saat logout & saat 401. Jangan pernah membiarkan error
+  // keluar dari sini agar logout tidak gagal karena masalah storage lokal.
+  static Future<void> clear() async {
+    try {
+      await _storage.deleteAll();
+    } catch (e) {
+      debugPrint('[TokenStorage] clear gagal: $e');
+    }
+  }
 
   // setters used by mock repository
   static Future<void> setToken(String value) =>

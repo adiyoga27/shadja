@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:dio/dio.dart';
 import 'package:shadja/core/constants/api_endpoints.dart';
 import 'package:shadja/core/storage/token_storage.dart';
@@ -91,8 +92,13 @@ class AuthRepository {
   Future<void> logout() async {
     try {
       await _dio.post(ApiEndpoints.logout);
-    } catch (_) {} finally {
+    } catch (_) {
+      // Token mungkin sudah tidak valid di server; tetap lanjutkan logout lokal.
+    }
+    try {
       await TokenStorage.clear();
+    } catch (e) {
+      debugPrint('Logout: gagal membersihkan storage lokal: $e');
     }
   }
 
