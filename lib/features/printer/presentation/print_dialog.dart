@@ -108,6 +108,14 @@ class _PrintDialogState extends ConsumerState<PrintDialog> {
     final cfg = printer.config;
     final isBt = cfg.connectionType == PrinterConnectionType.bluetooth;
 
+    IconData typeIcon(bool on) => switch (cfg.connectionType) {
+          PrinterConnectionType.network => Icons.lan_outlined,
+          PrinterConnectionType.usb =>
+            on ? Icons.usb : Icons.usb_off_outlined,
+          PrinterConnectionType.bluetooth =>
+            on ? Icons.bluetooth_connected : Icons.bluetooth_disabled,
+        };
+
     return AlertDialog(
       icon: const Icon(Icons.print_outlined, color: AppColors.primary),
       title: const Text('Cetak Struk'),
@@ -124,7 +132,7 @@ class _PrintDialogState extends ConsumerState<PrintDialog> {
               Row(
                 children: [
                   Icon(
-                    isBt ? Icons.bluetooth_connected : Icons.lan_outlined,
+                    typeIcon(true),
                     size: 18,
                     color: AppColors.success,
                   ),
@@ -179,7 +187,7 @@ class _PrintDialogState extends ConsumerState<PrintDialog> {
               Row(
                 children: [
                   Icon(
-                    isBt ? Icons.bluetooth_disabled : Icons.lan_outlined,
+                    typeIcon(false),
                     size: 18,
                     color: AppColors.textHint,
                   ),
@@ -190,7 +198,7 @@ class _PrintDialogState extends ConsumerState<PrintDialog> {
                           ? 'Tidak ada printer terpasang.\n'
                               'Pastikan printer sudah dipasangkan (paired) di pengaturan Bluetooth HP/tablet.'
                           : 'Printer belum terhubung.\n'
-                              'Atur koneksi LAN di Pengaturan Printer terlebih dahulu.',
+                              'Atur koneksi ${cfg.connectionType.label} di Pengaturan Printer terlebih dahulu.',
                       style: const TextStyle(
                           fontSize: 13, color: AppColors.textSecondary),
                     ),

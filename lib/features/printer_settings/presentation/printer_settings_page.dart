@@ -13,6 +13,17 @@ class PrinterSettingsPage extends ConsumerStatefulWidget {
       _PrinterSettingsPageState();
 }
 
+IconData _typeIcon(PrinterConnectionType type, bool connected) =>
+      switch (type) {
+        PrinterConnectionType.network => Icons.lan_outlined,
+        PrinterConnectionType.usb => connected
+            ? Icons.usb
+            : Icons.usb_off_outlined,
+        PrinterConnectionType.bluetooth => connected
+            ? Icons.bluetooth_connected
+            : Icons.bluetooth_disabled,
+      };
+
 class _PrinterSettingsPageState extends ConsumerState<PrinterSettingsPage> {
   final _storeCtrl = TextEditingController();
   final _addrCtrl = TextEditingController();
@@ -112,13 +123,7 @@ class _PrinterSettingsPageState extends ConsumerState<PrinterSettingsPage> {
                       ),
                       alignment: Alignment.center,
                       child: Icon(
-                        connected
-                            ? (cfg.connectionType == PrinterConnectionType.network
-                                ? Icons.lan_outlined
-                                : Icons.bluetooth_connected)
-                            : (cfg.connectionType == PrinterConnectionType.network
-                                ? Icons.lan_outlined
-                                : Icons.bluetooth_disabled),
+                        _typeIcon(cfg.connectionType, connected),
                         size: 24,
                         color: connected
                             ? AppColors.success
@@ -162,9 +167,12 @@ class _PrinterSettingsPageState extends ConsumerState<PrinterSettingsPage> {
                   child: OutlinedButton.icon(
                     onPressed: () => context.go('/home/printer/scan'),
                     icon: Icon(
-                      cfg.connectionType == PrinterConnectionType.network
-                          ? Icons.lan_outlined
-                          : Icons.bluetooth_searching,
+                      switch (cfg.connectionType) {
+                        PrinterConnectionType.network => Icons.lan_outlined,
+                        PrinterConnectionType.usb => Icons.usb,
+                        PrinterConnectionType.bluetooth =>
+                          Icons.bluetooth_searching,
+                      },
                       size: 18,
                     ),
                     label: const Text('Pilih Printer'),

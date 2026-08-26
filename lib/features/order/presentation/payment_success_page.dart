@@ -83,13 +83,15 @@ class PaymentSuccessPage extends ConsumerWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          cfg.connectionType == PrinterConnectionType.network
-                              ? (connected
-                                  ? Icons.lan_outlined
-                                  : Icons.lan_outlined)
-                              : (connected
-                                  ? Icons.bluetooth_connected
-                                  : Icons.bluetooth_disabled),
+                          switch (cfg.connectionType) {
+                            PrinterConnectionType.network => Icons.lan_outlined,
+                            PrinterConnectionType.usb => connected
+                                ? Icons.usb
+                                : Icons.usb_off_outlined,
+                            PrinterConnectionType.bluetooth => connected
+                                ? Icons.bluetooth_connected
+                                : Icons.bluetooth_disabled,
+                          },
                           size: 18,
                           color:
                               connected ? AppColors.success : AppColors.textHint,

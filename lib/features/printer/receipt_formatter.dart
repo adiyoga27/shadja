@@ -5,6 +5,10 @@ import 'package:shadja/features/order/data/order_model.dart';
 class ReceiptFormatter {
   ReceiptFormatter._();
 
+  // Cash drawer kick: ESC p m t1 t2 (pin 2: m=0x00, pin 5: m=0x01)
+  // t1=0x19, t2=0xFA => 50ms on / 500ms off, standar Epson.
+  static const _drawerKickPin2 = [0x1B, 0x70, 0x00, 0x19, 0xFA];
+
   static Future<List<int>> formatBytes({
     required OrderModel order,
     String storeName = 'Shadja Restaurant',
@@ -16,14 +20,17 @@ class ReceiptFormatter {
     final paper = paperWidth == 58 ? PaperSize.mm58 : PaperSize.mm80;
     final generator = Generator(paper, profile);
 
-    final bytes = _buildReceipt(
+    // Buka laci uang (cash drawer) segera saat mulai mencetak.
+    final bytes = List<int>.from(_drawerKickPin2);
+
+    bytes.addAll(_buildReceipt(
       generator: generator,
       order: order,
       storeName: storeName,
       storeAddress: storeAddress,
       storePhone: storePhone,
       paperWidth: paperWidth,
-    );
+    ));
 
     bytes.addAll(generator.cut());
     return bytes;

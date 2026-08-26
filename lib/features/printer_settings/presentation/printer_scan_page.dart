@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_usb_printer/flutter_usb_printer.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
@@ -37,6 +38,10 @@ class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
   bool _lanScanning = false;
   bool _lanTesting = false;
   List<NetworkPrinterDevice> _lanDevices = [];
+
+  // USB
+  bool _usbScanning = false;
+  List<UsbPrinterDevice> _usbDevices = [];
 
   @override
   void initState() {
@@ -261,6 +266,45 @@ class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
     }
   }
 
+  // --- USB ---
+
+  Future<void> _scanUsb() async {
+    setState(() {
+      _usbScanning = true;
+      _usbDevices = [];
+      _error = null;
+    });
+    try {
+      final results = await FlutterUsbPrinter.getUSBDeviceList();
+      if (!mounted) return;
+      setState(() {
+        _usbDevices =
+            results.map(UsbPrinterDevice.fromMap).where((d) => d.vendorId > 0).toList();
+        _usbScanning = false;
+      });
+      if (_usbDevices.isEmpty) {
+        setState(() {
+          _error = 'Tidak ada printer USB terdeteksi.\n\n'
+              'Pastikan:\n'
+              '1. Printer iWare menyala\n'
+              '2. Kabel USB (OTG) terhubung ke HP/tablet\n'
+              '3. HP/tablet mendukung USB OTG (host mode)';
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _usbScanning = false;
+        _error = 'Gagal memindai USB: $e';
+      });
+    }
+  }
+
+  Future<void> _selectUsb(UsbPrinterDevice d) async {
+    await ref.read(printerProvider.notifier).setUsbPrinter(d);
+    if (mounted) context.go('/home/printer');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -272,7 +316,7 @@ class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
         ),
       ),
       body: DefaultTabController(
-        length: 2,
+        length: 3,
         child: Column(
           children: [
             TabBar(
@@ -280,20 +324,25 @@ class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
               unselectedLabelColor: AppColors.textSecondary,
               indicatorColor: AppColors.primary,
               onTap: (i) => setState(() {
-                _mode = i == 0
-                    ? PrinterConnectionType.bluetooth
-                    : PrinterConnectionType.network;
+                _mode = switch (i) {
+                  0 => PrinterConnectionType.bluetooth,
+                  1 => PrinterConnectionType.network,
+                  _ => PrinterConnectionType.usb,
+                };
                 _error = null;
               }),
               tabs: const [
                 Tab(text: 'Bluetooth', icon: Icon(Icons.bluetooth, size: 20)),
                 Tab(text: 'LAN (Wi-Fi)', icon: Icon(Icons.lan_outlined, size: 20)),
+                Tab(text: 'USB', icon: Icon(Icons.usb, size: 20)),
               ],
             ),
             Expanded(
-              child: _mode == PrinterConnectionType.bluetooth
-                  ? _buildBluetoothTab()
-                  : _buildLanTab(),
+              child: switch (_mode) {
+                PrinterConnectionType.bluetooth => _buildBluetoothTab(),
+                PrinterConnectionType.network => _buildLanTab(),
+                PrinterConnectionType.usb => _buildUsbTab(),
+              },
             ),
           ],
         ),
@@ -487,6 +536,90 @@ class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
                         title: 'iWare Thermal (${d.ipAddress})',
                         subtitle: 'Port 9100 — ketuk untuk memilih',
                         onTap: () => _selectLan(d),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUsbTab() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _InfoBanner(
+            error: _error,
+            message: _error != null
+                ? null
+                : 'Colokkan printer iWare ke HP/tablet via kabel USB (OTG), lalu tekan "Scan USB".',
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: _usbScanning ? null : _scanUsb,
+            icon: _usbScanning
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.usb, size: 18),
+            label: Text(_usbScanning ? 'Memindai…' : 'Scan USB'),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: _usbDevices.isEmpty
+                ? ListView(
+                    shrinkWrap: true,
+                    children: [
+                      if (!_usbScanning)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 24),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Icon(Icons.usb_off_outlined,
+                                    size: 56, color: AppColors.textHint),
+                                SizedBox(height: 12),
+                                Text(
+                                  'Belum ada printer USB.',
+                                  style: TextStyle(
+                                      fontSize: 15,
+                                      color: AppColors.textPrimary),
+                                ),
+                                SizedBox(height: 24),
+                                Text(
+                                  'Cara menggunakan printer USB:\n'
+                                  '1. Nyalakan printer iWare\n'
+                                  '2. Hubungkan kabel USB (OTG) ke HP/tablet\n'
+                                  '3. Tekan "Scan USB"\n'
+                                  '4. Izinkan akses USB bila diminta\n'
+                                  '5. Pilih printer',
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.textSecondary,
+                                      height: 1.8),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  )
+                : ListView.separated(
+                    itemCount: _usbDevices.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final d = _usbDevices[index];
+                      return _DeviceTile(
+                        icon: Icons.print_outlined,
+                        title: d.displayName,
+                        subtitle:
+                            'VID:${d.vendorId.toRadixString(16)} PID:${d.productId.toRadixString(16)} — ketuk untuk memilih',
+                        onTap: () => _selectUsb(d),
                       );
                     },
                   ),

@@ -38,6 +38,15 @@ dependencies:
   esc_pos_utils_plus: ^2.0.4
   print_bluetooth_thermal: ^1.2.2
 
+  # Printer thermal via USB (Android OTG)
+  flutter_usb_printer: ^0.3.2
+  window_manager: ^0.5.2
+
+dependency_overrides:
+  # Patch lokal: fix build.gradle.kts agar kompatibel dengan AGP 9
+  flutter_usb_printer:
+    path: packages/flutter_usb_printer
+
   # Utilities
   uuid: ^4.5.1
 

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_usb_printer/flutter_usb_printer.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:shadja/features/order/data/order_model.dart';
 import 'package:shadja/features/printer/receipt_formatter.dart';
@@ -9,13 +10,43 @@ import 'package:shadja/core/storage/token_storage.dart';
 
 enum PrinterConnectionStatus { disconnected, connecting, connected }
 
-enum PrinterConnectionType { bluetooth, network }
+enum PrinterConnectionType { bluetooth, network, usb }
 
 extension PrinterConnectionTypeLabel on PrinterConnectionType {
   String get label => switch (this) {
         PrinterConnectionType.bluetooth => 'Bluetooth',
         PrinterConnectionType.network => 'LAN (Wi-Fi)',
+        PrinterConnectionType.usb => 'USB',
       };
+}
+
+class UsbPrinterDevice {
+  const UsbPrinterDevice({
+    required this.vendorId,
+    required this.productId,
+    this.deviceName,
+    this.manufacturer,
+    this.productName,
+  });
+
+  final int vendorId;
+  final int productId;
+  final String? deviceName;
+  final String? manufacturer;
+  final String? productName;
+
+  factory UsbPrinterDevice.fromMap(Map<String, dynamic> map) => UsbPrinterDevice(
+        vendorId: int.tryParse('${map['vendorId']}') ?? 0,
+        productId: int.tryParse('${map['productId']}') ?? 0,
+        deviceName: map['deviceName'] as String?,
+        manufacturer: map['manufacturer'] as String?,
+        productName: map['productName'] as String?,
+      );
+
+  String get displayName {
+    final name = '${manufacturer ?? ''} ${productName ?? ''}'.trim();
+    return name.isNotEmpty ? name : (deviceName ?? 'USB Printer');
+  }
 }
 
 class PrinterConfig {
@@ -24,6 +55,8 @@ class PrinterConfig {
     this.macAddress,
     this.ipAddress,
     this.port = 9100,
+    this.usbVendorId,
+    this.usbProductId,
     this.name,
     this.paperWidth = 80,
     this.autoPrint = false,
@@ -37,6 +70,8 @@ class PrinterConfig {
   final String? macAddress;
   final String? ipAddress;
   final int port;
+  final int? usbVendorId;
+  final int? usbProductId;
   final String? name;
   final int paperWidth;
   final bool autoPrint;
@@ -50,11 +85,14 @@ class PrinterConfig {
           macAddress != null && macAddress!.isNotEmpty,
         PrinterConnectionType.network =>
           ipAddress != null && ipAddress!.isNotEmpty,
+        PrinterConnectionType.usb =>
+          usbVendorId != null && usbProductId != null,
       };
 
   String get displayAddress => switch (connectionType) {
         PrinterConnectionType.bluetooth => macAddress ?? '',
         PrinterConnectionType.network => '$ipAddress:$port',
+        PrinterConnectionType.usb => '$usbVendorId:$usbProductId',
       };
 
   PrinterConfig copyWith({
@@ -62,6 +100,8 @@ class PrinterConfig {
     String? macAddress,
     String? ipAddress,
     int? port,
+    int? usbVendorId,
+    int? usbProductId,
     String? name,
     int? paperWidth,
     bool? autoPrint,
@@ -75,6 +115,8 @@ class PrinterConfig {
         macAddress: macAddress ?? this.macAddress,
         ipAddress: ipAddress ?? this.ipAddress,
         port: port ?? this.port,
+        usbVendorId: usbVendorId ?? this.usbVendorId,
+        usbProductId: usbProductId ?? this.usbProductId,
         name: name ?? this.name,
         paperWidth: paperWidth ?? this.paperWidth,
         autoPrint: autoPrint ?? this.autoPrint,
@@ -117,6 +159,8 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
   static const _kMac = 'printer_mac';
   static const _kIp = 'printer_ip';
   static const _kPort = 'printer_port';
+  static const _kVid = 'printer_usb_vid';
+  static const _kPid = 'printer_usb_pid';
   static const _kName = 'printer_name';
   static const _kPaper = 'printer_paper';
   static const _kAuto = 'printer_auto';
@@ -126,15 +170,20 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
   static const _kPhone = 'printer_phone';
 
   Socket? _socket;
+  final FlutterUsbPrinter _usbPrinter = FlutterUsbPrinter();
 
   Future<void> _loadConfig() async {
     final typeStr = await TokenStorage.read(_kType);
-    final type = typeStr == 'network'
-        ? PrinterConnectionType.network
-        : PrinterConnectionType.bluetooth;
+    final type = switch (typeStr) {
+      'network' => PrinterConnectionType.network,
+      'usb' => PrinterConnectionType.usb,
+      _ => PrinterConnectionType.bluetooth,
+    };
     final mac = await TokenStorage.read(_kMac);
     final ip = await TokenStorage.read(_kIp);
     final port = int.tryParse(await TokenStorage.read(_kPort) ?? '9100') ?? 9100;
+    final vid = int.tryParse(await TokenStorage.read(_kVid) ?? '');
+    final pid = int.tryParse(await TokenStorage.read(_kPid) ?? '');
     final name = await TokenStorage.read(_kName);
     final paper = int.tryParse(await TokenStorage.read(_kPaper) ?? '80') ?? 80;
     final auto = (await TokenStorage.read(_kAuto)) == 'true';
@@ -149,6 +198,8 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
       macAddress: mac,
       ipAddress: ip,
       port: port,
+      usbVendorId: vid,
+      usbProductId: pid,
       name: name,
       paperWidth: paper,
       autoPrint: auto,
@@ -193,22 +244,46 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
     await connect();
   }
 
+  Future<void> setUsbPrinter(UsbPrinterDevice device) async {
+    await _saveConnection(
+      type: PrinterConnectionType.usb,
+      macAddress: null,
+      ipAddress: null,
+      usbVendorId: device.vendorId,
+      usbProductId: device.productId,
+      name: device.displayName,
+    );
+    await connect();
+  }
+
   Future<void> _saveConnection({
     required PrinterConnectionType type,
     String? macAddress,
     String? ipAddress,
     int? port,
+    int? usbVendorId,
+    int? usbProductId,
     String? name,
   }) async {
     await TokenStorage.write(_kType, type.name);
     await TokenStorage.write(_kName, name ?? '');
-    if (type == PrinterConnectionType.network) {
-      await TokenStorage.write(_kIp, ipAddress ?? '');
-      await TokenStorage.write(_kPort, (port ?? 9100).toString());
-      await TokenStorage.delete(_kMac);
-    } else {
-      await TokenStorage.write(_kMac, macAddress ?? '');
-      await TokenStorage.delete(_kIp);
+    switch (type) {
+      case PrinterConnectionType.network:
+        await TokenStorage.write(_kIp, ipAddress ?? '');
+        await TokenStorage.write(_kPort, (port ?? 9100).toString());
+        await TokenStorage.delete(_kMac);
+        await TokenStorage.delete(_kVid);
+        await TokenStorage.delete(_kPid);
+      case PrinterConnectionType.bluetooth:
+        await TokenStorage.write(_kMac, macAddress ?? '');
+        await TokenStorage.delete(_kIp);
+        await TokenStorage.delete(_kVid);
+        await TokenStorage.delete(_kPid);
+      case PrinterConnectionType.usb:
+        await TokenStorage.write(_kVid, (usbVendorId ?? 0).toString());
+        await TokenStorage.write(_kPid, (usbProductId ?? 0).toString());
+        await TokenStorage.delete(_kMac);
+        await TokenStorage.delete(_kIp);
     }
     state = state.copyWith(
       config: state.config.copyWith(
@@ -216,6 +291,8 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
         macAddress: type == PrinterConnectionType.bluetooth ? macAddress : null,
         ipAddress: type == PrinterConnectionType.network ? ipAddress : null,
         port: type == PrinterConnectionType.network ? port : state.config.port,
+        usbVendorId: type == PrinterConnectionType.usb ? usbVendorId : null,
+        usbProductId: type == PrinterConnectionType.usb ? usbProductId : null,
         name: name,
       ),
       status: PrinterConnectionStatus.connecting,
@@ -235,6 +312,8 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
           await _connectBluetooth(cfg.macAddress!);
         case PrinterConnectionType.network:
           await _connectNetwork(cfg.ipAddress!, cfg.port);
+        case PrinterConnectionType.usb:
+          await _connectUsb(cfg.usbVendorId!, cfg.usbProductId!);
       }
     } catch (e) {
       if (kDebugMode) {
@@ -291,11 +370,38 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
     state = state.copyWith(status: PrinterConnectionStatus.connected);
   }
 
-  Future<void> disconnect() async {
-    if (state.config.connectionType == PrinterConnectionType.bluetooth) {
-      await PrintBluetoothThermal.disconnect;
+  Future<void> _connectUsb(int vendorId, int productId) async {
+    if (!Platform.isAndroid) {
+      throw PrinterException('USB hanya didukung di perangkat Android.');
+    }
+    final isConnected = await _usbPrinter.isConnected();
+    if (isConnected) {
+      state = state.copyWith(status: PrinterConnectionStatus.connected);
+      return;
+    }
+    final connected = await _usbPrinter.connect(vendorId, productId);
+    if (kDebugMode) {
+      debugPrint('[Printer] usb connect result: $connected');
+    }
+    if (connected == true) {
+      state = state.copyWith(status: PrinterConnectionStatus.connected);
     } else {
-      await _closeSocket();
+      state = state.copyWith(
+        status: PrinterConnectionStatus.disconnected,
+        error: 'Gagal menyambung ke printer USB. '
+            'Pastikan printer terhubung via kabel USB (OTG) dan izin akses USB diberikan.',
+      );
+    }
+  }
+
+  Future<void> disconnect() async {
+    switch (state.config.connectionType) {
+      case PrinterConnectionType.bluetooth:
+        await PrintBluetoothThermal.disconnect;
+      case PrinterConnectionType.network:
+        await _closeSocket();
+      case PrinterConnectionType.usb:
+        await _usbPrinter.close();
     }
     state = state.copyWith(status: PrinterConnectionStatus.disconnected);
   }
@@ -313,6 +419,8 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
     await TokenStorage.delete(_kType);
     await TokenStorage.delete(_kMac);
     await TokenStorage.delete(_kIp);
+    await TokenStorage.delete(_kVid);
+    await TokenStorage.delete(_kPid);
     await TokenStorage.delete(_kName);
     state = state.copyWith(
       config: PrinterConfig(
@@ -383,6 +491,21 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
           await socket.flush();
         } catch (e) {
           throw PrinterException('Gagal mengirim data ke printer: $e');
+        }
+      case PrinterConnectionType.usb:
+        final vid = state.config.usbVendorId;
+        final pid = state.config.usbProductId;
+        if (vid == null || pid == null) {
+          throw PrinterException('Printer belum terhubung.');
+        }
+        final result = await _usbPrinter.sendData(
+          vid,
+          pid,
+          Uint8List.fromList(bytes),
+        );
+        if (result != true) {
+          throw PrinterException(
+              'Gagal mengirim data ke printer USB. Pastikan kabel USB terhubung.');
         }
     }
   }
