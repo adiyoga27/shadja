@@ -39,19 +39,8 @@ class OrderHistoryState {
       );
 
   List<OrderModel> get filteredOrders {
-    var list = orders;
-    if (filterStatus != 'all') {
-      list = list.where((o) => o.orderStatus == filterStatus).toList();
-    }
-    final q = searchQuery.trim().toLowerCase();
-    if (q.isNotEmpty) {
-      list = list.where((o) {
-        final number = (o.orderNumber ?? '#${o.id}').toLowerCase();
-        final customer = (o.customerName ?? '').toLowerCase();
-        return number.contains(q) || customer.contains(q);
-      }).toList();
-    }
-    return list;
+    if (filterStatus == 'all') return orders;
+    return orders.where((o) => o.orderStatus == filterStatus).toList();
   }
 }
 

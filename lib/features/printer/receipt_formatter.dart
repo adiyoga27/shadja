@@ -113,6 +113,13 @@ class ReceiptFormatter {
     ]));
     add(generator.text('Tipe: ${_orderTypeLabel(order.orderType)}',
         styles: bodyStyle()));
+    if (order.restaurantTableNumber != null ||
+        order.restaurantTableId != null) {
+      add(generator.text(
+        'Meja: ${order.restaurantTableNumber ?? order.restaurantTableId}',
+        styles: bodyStyle(),
+      ));
+    }
     if (order.customerName != null) {
       add(generator.text('Pelanggan: ${order.customerName}',
           styles: bodyStyle()));
@@ -292,6 +299,11 @@ class ReceiptFormatter {
     sb.writeln(
         'Tgl: ${order.createdAt != null ? _dateStr(order.createdAt!) : '-'}');
     sb.writeln('Tipe: ${_orderTypeLabel(order.orderType)}');
+    if (order.restaurantTableNumber != null ||
+        order.restaurantTableId != null) {
+      sb.writeln(
+          'Meja: ${order.restaurantTableNumber ?? order.restaurantTableId}');
+    }
     if (order.customerName != null) {
       sb.writeln('Pelanggan: ${order.customerName}');
     }

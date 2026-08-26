@@ -398,8 +398,12 @@ class MasonryGridViewReduce extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Padding bawah menyesuaikan kartu keranjang melayang di mobile:
+    // kartu (≈52px) + margin 12 + safe area bawah, agar baris menu terakhir
+    // tidak tertutup dan tetap bisa ditekan.
+    final bottomPad = MediaQuery.paddingOf(context).bottom + 140;
     return GridView.builder(
-      padding: const EdgeInsets.only(bottom: 80),
+      padding: EdgeInsets.only(bottom: bottomPad),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         crossAxisSpacing: crossAxisSpacing,

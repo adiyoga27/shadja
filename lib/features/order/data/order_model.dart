@@ -104,6 +104,7 @@ class OrderModel {
     this.customerPhone,
     this.deliveryAddress,
     this.restaurantTableId,
+    this.restaurantTableNumber,
     this.notes,
     required this.orderItems,
     this.payments = const [],
@@ -126,6 +127,7 @@ class OrderModel {
   final String? customerPhone;
   final String? deliveryAddress;
   final int? restaurantTableId;
+  final String? restaurantTableNumber;
   final String? notes;
   final List<OrderItemModel> orderItems;
   final List<PaymentModel> payments;
@@ -155,6 +157,9 @@ class OrderModel {
         restaurantTableId: json['restaurant_table_id'] != null
             ? (json['restaurant_table_id'] as num).toInt()
             : null,
+        restaurantTableNumber:
+            (json['restaurant_table']?['table_number'] as String?) ??
+                json['table_number'] as String?,
         notes: json['notes'] as String?,
         orderItems: (json['order_items'] as List<dynamic>?)
                 ?.map((e) => OrderItemModel.fromJson(e as Map<String, dynamic>))

@@ -6,6 +6,7 @@ import 'package:shadja/core/responsive/responsive_layout.dart';
 import 'package:shadja/core/utils/formatters.dart';
 import 'package:shadja/features/order/data/order_model.dart';
 import 'package:shadja/features/order/presentation/order_provider.dart';
+import 'package:shadja/features/reservation/data/reservation_model.dart';
 import 'package:shadja/features/reservation/presentation/reservation_provider.dart';
 import 'package:shadja/shared/widgets/empty_state.dart';
 import 'package:shadja/shared/widgets/loading_state.dart';
@@ -47,6 +48,31 @@ class _OrderHistoryPageState extends ConsumerState<OrderHistoryPage> {
     );
   }
 
+  // Filter hasil pencarian: nomor order, pelanggan, atau nomor meja.
+  List<OrderModel> _applySearch(List<OrderModel> orders, String query) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return orders;
+    final tables = ref.watch(tablesProvider).value ?? const <RestaurantTableModel>[];
+    return orders.where((o) {
+      final number = (o.orderNumber ?? '#${o.id}').toLowerCase();
+      final customer = (o.customerName ?? '').toLowerCase();
+      String? table;
+      if (o.restaurantTableId != null) {
+        String? tableNum;
+        for (final t in tables) {
+          if (t.id == o.restaurantTableId) {
+            tableNum = t.tableNumber;
+            break;
+          }
+        }
+        table = (tableNum ?? '${o.restaurantTableId}').toLowerCase();
+      }
+      return number.contains(q) ||
+          customer.contains(q) ||
+          (table?.contains(q) ?? false);
+    }).toList();
+  }
+
   Widget _buildBody(OrderHistoryState state) {
     if (state.isLoading) {
       return const Center(child: LoadingState());
@@ -57,7 +83,7 @@ class _OrderHistoryPageState extends ConsumerState<OrderHistoryPage> {
         onRetry: () => ref.read(orderHistoryProvider.notifier).load(),
       );
     }
-    final orders = state.filteredOrders;
+    final orders = _applySearch(state.filteredOrders, state.searchQuery);
     if (orders.isEmpty) {
       return const EmptyState(
         icon: Icons.assignment_outlined,
@@ -74,7 +100,7 @@ class _OrderHistoryPageState extends ConsumerState<OrderHistoryPage> {
             onChanged: (v) =>
                 ref.read(orderHistoryProvider.notifier).setSearch(v),
             decoration: InputDecoration(
-              hintText: 'Cari nomor order / pelanggan…',
+              hintText: 'Cari nomor order / pelanggan / meja…',
               prefixIcon: const Icon(Icons.search, size: 20),
               suffixIcon: state.searchQuery.isNotEmpty
                   ? IconButton(
