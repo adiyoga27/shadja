@@ -6,6 +6,7 @@ import 'package:shadja/core/responsive/responsive_layout.dart';
 import 'package:shadja/core/utils/formatters.dart';
 import 'package:shadja/features/order/data/order_model.dart';
 import 'package:shadja/features/order/presentation/order_provider.dart';
+import 'package:shadja/features/reservation/presentation/reservation_provider.dart';
 import 'package:shadja/shared/widgets/empty_state.dart';
 import 'package:shadja/shared/widgets/loading_state.dart';
 import 'package:shadja/shared/widgets/status_badge.dart';
@@ -67,6 +68,26 @@ class _OrderHistoryPageState extends ConsumerState<OrderHistoryPage> {
 
     return Column(
       children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: TextField(
+            onChanged: (v) =>
+                ref.read(orderHistoryProvider.notifier).setSearch(v),
+            decoration: InputDecoration(
+              hintText: 'Cari nomor order / pelanggan…',
+              prefixIcon: const Icon(Icons.search, size: 20),
+              suffixIcon: state.searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: () => ref
+                          .read(orderHistoryProvider.notifier)
+                          .setSearch(''),
+                    )
+                  : null,
+              isDense: true,
+            ),
+          ),
+        ),
         _FilterTabs(
           current: state.filterStatus,
           onChanged: (s) =>
@@ -143,7 +164,7 @@ class _FilterTabs extends StatelessWidget {
   }
 }
 
-class _OrderTile extends StatelessWidget {
+class _OrderTile extends ConsumerWidget {
   const _OrderTile({required this.order});
   final OrderModel order;
 
@@ -173,10 +194,30 @@ class _OrderTile extends StatelessWidget {
     }
   }
 
+  // Nomor meja diambil dari daftar meja (fallback: id meja).
+  String? _tableNumber(WidgetRef ref) {
+    if (order.restaurantTableId == null) return null;
+    final tables = ref.watch(tablesProvider).value;
+    if (tables != null) {
+      for (final t in tables) {
+        if (t.id == order.restaurantTableId) return t.tableNumber;
+      }
+    }
+    return '${order.restaurantTableId}';
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final badge = _statusBadge();
     final itemCount = order.orderItems.fold(0, (s, e) => s + e.quantity);
+    final table = _tableNumber(ref);
+
+    final subtitleParts = [
+      '$itemCount item',
+      order.customerName ?? 'Walk-in',
+      _orderTypeLabel(),
+      if (table != null) 'Meja $table',
+    ];
 
     return Material(
       color: AppColors.surface,
@@ -226,7 +267,7 @@ class _OrderTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$itemCount item • ${order.customerName ?? "Walk-in"} • ${_orderTypeLabel()}',
+                      subtitleParts.join(' • '),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(

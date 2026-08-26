@@ -14,29 +14,44 @@ class OrderHistoryState {
     this.isLoading = false,
     this.error,
     this.filterStatus = 'all',
+    this.searchQuery = '',
   });
 
   final List<OrderModel> orders;
   final bool isLoading;
   final String? error;
   final String filterStatus;
+  final String searchQuery;
 
   OrderHistoryState copyWith({
     List<OrderModel>? orders,
     bool? isLoading,
     String? error,
     String? filterStatus,
+    String? searchQuery,
   }) =>
       OrderHistoryState(
         orders: orders ?? this.orders,
         isLoading: isLoading ?? this.isLoading,
         error: error,
         filterStatus: filterStatus ?? this.filterStatus,
+        searchQuery: searchQuery ?? this.searchQuery,
       );
 
   List<OrderModel> get filteredOrders {
-    if (filterStatus == 'all') return orders;
-    return orders.where((o) => o.orderStatus == filterStatus).toList();
+    var list = orders;
+    if (filterStatus != 'all') {
+      list = list.where((o) => o.orderStatus == filterStatus).toList();
+    }
+    final q = searchQuery.trim().toLowerCase();
+    if (q.isNotEmpty) {
+      list = list.where((o) {
+        final number = (o.orderNumber ?? '#${o.id}').toLowerCase();
+        final customer = (o.customerName ?? '').toLowerCase();
+        return number.contains(q) || customer.contains(q);
+      }).toList();
+    }
+    return list;
   }
 }
 
@@ -68,6 +83,10 @@ class OrderHistoryNotifier extends StateNotifier<OrderHistoryState> {
 
   void setFilter(String status) {
     state = state.copyWith(filterStatus: status);
+  }
+
+  void setSearch(String query) {
+    state = state.copyWith(searchQuery: query);
   }
 }
 

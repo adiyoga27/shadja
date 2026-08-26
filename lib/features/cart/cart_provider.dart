@@ -75,9 +75,9 @@ class CartNotifier extends StateNotifier<CartState> {
     }
   }
 
-  void updateNotes(MenuItemModel menu, String? notes) {
-    final idx = state.items
-        .indexWhere((e) => e.menuItem.id == menu.id && e.notes == notes);
+  void updateNotes(MenuItemModel menu, String? oldNotes, String? notes) {
+    final idx = state.items.indexWhere(
+        (e) => e.menuItem.id == menu.id && e.notes == oldNotes);
     if (idx >= 0) {
       final updated = List<CartItemModel>.from(state.items);
       updated[idx] = updated[idx].copyWithNotes(notes);

@@ -304,6 +304,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                         if (result != null && context.mounted) {
                           ref.read(cartProvider.notifier).updateNotes(
                                 it.menuItem,
+                                it.notes,
                                 result.isEmpty ? null : result,
                               );
                         }

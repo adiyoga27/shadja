@@ -19,6 +19,7 @@ class CartPanel extends ConsumerWidget {
     if (result != null && context.mounted) {
       ref.read(cartProvider.notifier).updateNotes(
             item.menuItem,
+            item.notes,
             result.isEmpty ? null : result,
           );
     }
