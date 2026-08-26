@@ -5,12 +5,48 @@ import 'package:shadja/core/constants/app_colors.dart';
 import 'package:shadja/core/utils/formatters.dart';
 import 'package:shadja/features/cart/cart_provider.dart';
 import 'package:shadja/features/cart/presentation/cart_item_tile.dart';
+import 'package:shadja/features/menu/data/cart_item_model.dart';
 import 'package:shadja/shared/widgets/empty_state.dart';
 
 class CartPanel extends ConsumerWidget {
   const CartPanel({super.key, this.scrollable = true});
 
   final bool scrollable;
+
+  Future<void> _editNotes(
+      BuildContext context, WidgetRef ref, CartItemModel item) async {
+    final ctrl = TextEditingController(text: item.notes ?? '');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Catatan Item'),
+        content: TextField(
+          controller: ctrl,
+          maxLines: 3,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Contoh: tanpa gula, level 2',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+    if (result != null && context.mounted) {
+      ref.read(cartProvider.notifier).updateNotes(
+            item.menuItem,
+            result.isEmpty ? null : result,
+          );
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -85,6 +121,7 @@ class CartPanel extends ConsumerWidget {
                             .decrement(it.menuItem, notes: it.notes),
                         onRemove: () =>
                             ref.read(cartProvider.notifier).removeItem(index),
+                        onNotesTap: () => _editNotes(context, ref, it),
                         compact: true,
                       );
                     },

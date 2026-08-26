@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 class Formatters {
@@ -35,5 +36,34 @@ class Formatters {
     } catch (_) {
       return iso;
     }
+  }
+}
+
+/// Format input angka dengan pemisah ribuan (.) saat mengetik.
+/// Hanya menyimpan digit; kursor diletakkan di akhir.
+class ThousandSeparatorInputFormatter extends TextInputFormatter {
+  const ThousandSeparatorInputFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+    if (digits.isEmpty) return const TextEditingValue();
+    final formatted = _groupDigits(digits);
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+
+  static String _groupDigits(String digits) {
+    final buffer = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write('.');
+      buffer.write(digits[i]);
+    }
+    return buffer.toString();
   }
 }

@@ -6,6 +6,7 @@ import 'package:shadja/core/responsive/responsive_layout.dart';
 import 'package:shadja/features/reservation/data/reservation_model.dart';
 import 'package:shadja/features/reservation/data/reservation_repository.dart';
 import 'package:shadja/features/reservation/presentation/reservation_provider.dart';
+import 'package:shadja/shared/widgets/table_slider.dart';
 
 class ReservationFormPage extends ConsumerStatefulWidget {
   const ReservationFormPage({super.key});
@@ -134,7 +135,7 @@ class _ReservationFormPageState extends ConsumerState<ReservationFormPage> {
             tablesAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Text('Gagal memuat meja: $e'),
-              data: (tables) => _TableGrid(
+              data: (tables) => TableSlider(
                 tables: tables,
                 selectedId: _selectedTableId,
                 onSelect: (id) => setState(() => _selectedTableId = id),
@@ -209,82 +210,6 @@ class _ReservationFormPageState extends ConsumerState<ReservationFormPage> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _TableGrid extends StatelessWidget {
-  const _TableGrid({
-    required this.tables,
-    required this.selectedId,
-    required this.onSelect,
-  });
-
-  final List<RestaurantTableModel> tables;
-  final int? selectedId;
-  final ValueChanged<int> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-        childAspectRatio: 1.8,
-      ),
-      itemCount: tables.length,
-      itemBuilder: (context, index) {
-        final t = tables[index];
-        final selected = selectedId == t.id;
-        final occupied = t.status != 'kosong';
-        return GestureDetector(
-          onTap: () => onSelect(t.id),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            decoration: BoxDecoration(
-              color: selected
-                  ? AppColors.primaryBg
-                  : occupied
-                      ? AppColors.surfaceAlt
-                      : AppColors.surface,
-              border: Border.all(
-                color: selected ? AppColors.primary : AppColors.border,
-                width: selected ? 2 : 1,
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  t.tableNumber,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: occupied && !selected
-                        ? AppColors.textHint
-                        : selected
-                            ? AppColors.primary
-                            : AppColors.textPrimary,
-                  ),
-                ),
-                Text(
-                  occupied ? 'Terisi' : '${t.capacity} kursi',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: occupied && !selected
-                          ? AppColors.danger
-                          : AppColors.textSecondary,
-                      fontWeight: occupied ? FontWeight.w600 : null),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 }

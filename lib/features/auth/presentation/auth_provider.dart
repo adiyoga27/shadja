@@ -46,11 +46,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> _checkInitial() async {
     try {
-      final user = await _repo.currentUser();
+      final cached = await _repo.currentUser();
+      if (cached == null) {
+        state = const AuthState(status: AuthStatus.unauthenticated);
+        return;
+      }
       state = AuthState(
-        status: user != null ? AuthStatus.authenticated : AuthStatus.unauthenticated,
-        user: user,
+        status: AuthStatus.authenticated,
+        user: cached,
       );
+      try {
+        final fresh = await _repo.fetchProfile();
+        state = AuthState(
+          status: AuthStatus.authenticated,
+          user: fresh,
+        );
+      } catch (e) {
+        if (kDebugMode) debugPrint('Refresh profile gagal, pakai cache: $e');
+      }
     } catch (e) {
       state = const AuthState(status: AuthStatus.unauthenticated);
     }

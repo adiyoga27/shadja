@@ -14,8 +14,8 @@ class LoginPage extends ConsumerStatefulWidget {
 
 class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
-  final _emailCtrl = TextEditingController(text: 'admin@resto.test');
-  final _passwordCtrl = TextEditingController(text: 'password');
+  final _emailCtrl = TextEditingController(text: '');
+  final _passwordCtrl = TextEditingController(text: '');
   bool _obscure = true;
 
   @override
@@ -27,10 +27,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    await ref.read(authProvider.notifier).login(
-          _emailCtrl.text.trim(),
-          _passwordCtrl.text,
-        );
+    await ref
+        .read(authProvider.notifier)
+        .login(_emailCtrl.text.trim(), _passwordCtrl.text);
     if (!mounted) return;
     final state = ref.read(authProvider);
     if (state.status == AuthStatus.authenticated) {
@@ -69,30 +68,31 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // Logo
-                    Container(
-                      width: 72,
-                      height: 72,
-                      margin: const EdgeInsets.only(bottom: 20),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(22),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.3),
-                            blurRadius: 16,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      alignment: Alignment.center,
-                      child: const Icon(
-                        Icons.restaurant_menu,
-                        size: 36,
-                        color: Colors.white,
+                    Center(
+                      child: Container(
+                        width: 72,
+                        height: 72,
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(22),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.3),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.restaurant_menu,
+                          size: 36,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
-                    Text('Selamat datang 👋',
-                        style: AppTextStyles.heading),
+                    Text('Selamat datang 👋', style: AppTextStyles.heading),
                     const SizedBox(height: 6),
                     Text(
                       'Masuk untuk mulai melayani pelanggan.',
@@ -125,17 +125,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       obscureText: _obscure,
                       decoration: InputDecoration(
                         labelText: 'Kata Sandi',
-                        prefixIcon:
-                            const Icon(Icons.lock_outline, size: 20),
+                        prefixIcon: const Icon(Icons.lock_outline, size: 20),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscure
-                                ? Icons.visibility
-                                : Icons.visibility_off,
+                            _obscure ? Icons.visibility : Icons.visibility_off,
                             size: 20,
                           ),
-                          onPressed: () =>
-                              setState(() => _obscure = !_obscure),
+                          onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
                       validator: (v) {
@@ -171,46 +167,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           : const Text('Masuk'),
                     ),
                     const SizedBox(height: 16),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Belum punya akun? ',
-                          style: AppTextStyles.caption,
-                        ),
-                        GestureDetector(
-                          onTap: () => context.go('/register'),
-                          child: const Text(
-                            'Daftar',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 28),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryBg,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.info_outline, size: 16, color: AppColors.primary),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Gunakan akun admin@resto.test / password',
-                              style: TextStyle(fontSize: 12, color: AppColors.primaryDark),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),

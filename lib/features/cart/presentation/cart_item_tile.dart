@@ -81,7 +81,7 @@ class CartItemTile extends StatelessWidget {
                       ],
                     ),
                   ),
-                ] else if (!compact)
+                ] else
                   InkWell(
                     onTap: onNotesTap,
                     child: const Text(

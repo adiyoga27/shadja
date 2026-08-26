@@ -187,6 +187,7 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
               TextFormField(
                 controller: _cashCtrl,
                 keyboardType: TextInputType.number,
+                inputFormatters: const [ThousandSeparatorInputFormatter()],
                 decoration: InputDecoration(
                   labelText: 'Uang Diterima',
                   hintText: 'nominal yang dibayar pelanggan',

@@ -76,19 +76,21 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      alignment: Alignment.center,
-                      child: const Icon(
-                        Icons.person_add_outlined,
-                        size: 32,
-                        color: Colors.white,
+                    Center(
+                      child: Container(
+                        width: 64,
+                        height: 64,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.person_add_outlined,
+                          size: 32,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                     Text('Buat akun baru', style: AppTextStyles.heading),

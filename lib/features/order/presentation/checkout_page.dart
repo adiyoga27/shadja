@@ -11,6 +11,7 @@ import 'package:shadja/features/order/presentation/order_provider.dart';
 import 'package:shadja/features/cart/presentation/cart_item_tile.dart';
 import 'package:shadja/features/order/presentation/payment_method_sheet.dart';
 import 'package:shadja/features/reservation/presentation/reservation_provider.dart';
+import 'package:shadja/shared/widgets/table_slider.dart';
 
 class CheckoutPage extends ConsumerStatefulWidget {
   const CheckoutPage({super.key});
@@ -584,75 +585,10 @@ class _TableSelector extends ConsumerWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: tables.map((t) {
-                final selected = selectedId == t.id;
-                final occupied = t.status != 'kosong';
-                return GestureDetector(
-                  onTap: () => onChanged(t.id),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? AppColors.primaryBg
-                          : occupied
-                              ? AppColors.surfaceAlt
-                              : AppColors.surface,
-                      border: Border.all(
-                        color: selected
-                            ? AppColors.primary
-                            : AppColors.border,
-                        width: selected ? 2 : 1,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          selected
-                              ? Icons.check_circle
-                              : Icons.table_bar_outlined,
-                          size: 18,
-                          color: occupied && !selected
-                              ? AppColors.textHint
-                              : selected
-                                  ? AppColors.primary
-                                  : AppColors.textSecondary,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Meja ${t.tableNumber}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: occupied && !selected
-                                ? AppColors.textHint
-                                : selected
-                                    ? AppColors.primary
-                                    : AppColors.textPrimary,
-                          ),
-                        ),
-                        if (occupied) ...[
-                          const SizedBox(width: 6),
-                          const Text(
-                            'Terisi',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.danger,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
+            TableSlider(
+              tables: tables,
+              selectedId: selectedId,
+              onSelect: onChanged,
             ),
             if (selectedId == null) ...[
               const SizedBox(height: 8),

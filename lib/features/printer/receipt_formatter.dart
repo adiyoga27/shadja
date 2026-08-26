@@ -290,7 +290,7 @@ class ReceiptFormatter {
 
     sb.writeln('No: ${order.orderNumber ?? order.id}');
     sb.writeln(
-        'Tgl: ${order.createdAt != null ? Formatters.dateTime(order.createdAt!) : '-'}');
+        'Tgl: ${order.createdAt != null ? _dateStr(order.createdAt!) : '-'}');
     sb.writeln('Tipe: ${_orderTypeLabel(order.orderType)}');
     if (order.customerName != null) {
       sb.writeln('Pelanggan: ${order.customerName}');
@@ -372,8 +372,12 @@ class ReceiptFormatter {
   }
 
   static String _dateStr(DateTime dt) {
-    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    // created_at dari server berupa UTC; struk harus tampil di GMT+8.
+    final t = dt.toUtc().add(_gmt8Offset);
+    return '${t.day.toString().padLeft(2, '0')}/${t.month.toString().padLeft(2, '0')}/${t.year} ${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
+
+  static const _gmt8Offset = Duration(hours: 8);
 
   static String _orderTypeLabel(String type) {
     switch (type) {

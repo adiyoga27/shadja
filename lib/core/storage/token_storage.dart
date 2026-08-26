@@ -23,6 +23,7 @@ class TokenStorage {
   static const _keyUserName = 'user_name';
   static const _keyUserEmail = 'user_email';
   static const _keyUserRole = 'user_role';
+  static const _keyUserPhone = 'user_phone';
 
   static const _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -34,6 +35,7 @@ class TokenStorage {
     required String name,
     required String email,
     String? role,
+    String? phone,
   }) async {
     // Writes must be sequential: on Windows the map-file rewrite would race
     // otherwise and drop keys (e.g. the auth token).
@@ -44,6 +46,8 @@ class TokenStorage {
     await _serialized(() => _storage.write(key: _keyUserEmail, value: email));
     await _serialized(
         () => _storage.write(key: _keyUserRole, value: role ?? ''));
+    await _serialized(
+        () => _storage.write(key: _keyUserPhone, value: phone ?? ''));
   }
 
   static Future<String?> getToken() => _storage.read(key: _keyToken);
@@ -69,11 +73,14 @@ class TokenStorage {
       _serialized(() => _storage.write(key: _keyUserEmail, value: value));
   static Future<void> setUserRole(String value) =>
       _serialized(() => _storage.write(key: _keyUserRole, value: value));
+  static Future<void> setUserPhone(String value) =>
+      _serialized(() => _storage.write(key: _keyUserPhone, value: value));
 
   static Future<String?> getUserId() => _storage.read(key: _keyUserId);
   static Future<String?> getUserName() => _storage.read(key: _keyUserName);
   static Future<String?> getUserEmail() => _storage.read(key: _keyUserEmail);
   static Future<String?> getUserRole() => _storage.read(key: _keyUserRole);
+  static Future<String?> getUserPhone() => _storage.read(key: _keyUserPhone);
 
   // Generic key-value storage (used by printer settings, etc.)
   static Future<String?> read(String key) => _storage.read(key: key);

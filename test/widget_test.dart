@@ -11,6 +11,10 @@ class _FakeAuthRepo implements AuthRepository {
   @override
   Future<UserModel?> currentUser() async => null;
   @override
+  Future<UserModel> fetchProfile() async {
+    throw AuthException('test');
+  }
+  @override
   Future<AuthResponseModel> login(
       {required String email, required String password}) async {
     throw AuthException('test');

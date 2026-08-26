@@ -43,6 +43,7 @@ class AuthRepository {
         name: auth.user.name,
         email: auth.user.email,
         role: auth.user.role,
+        phone: auth.user.phone,
       );
 
       return auth;
@@ -81,11 +82,39 @@ class AuthRepository {
         name: auth.user.name,
         email: auth.user.email,
         role: auth.user.role,
+        phone: auth.user.phone,
       );
 
       return auth;
     } catch (e) {
       throw AuthException(_extractError(e));
+    }
+  }
+
+  /// Data user login saat ini langsung dari server.
+  Future<UserModel> fetchProfile() async {
+    try {
+      final response = await _dio.get(ApiEndpoints.profile);
+      final data = response.data as Map<String, dynamic>;
+      final user = data['user'] is Map
+          ? UserModel.fromJson(data['user'] as Map<String, dynamic>)
+          : UserModel.fromJson(data);
+
+      await TokenStorage.saveAuth(
+        token: (await TokenStorage.getToken()) ?? '',
+        userId: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+      );
+
+      return user;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        await TokenStorage.clear();
+      }
+      rethrow;
     }
   }
 
@@ -108,13 +137,14 @@ class AuthRepository {
     final name = await TokenStorage.getUserName();
     final email = await TokenStorage.getUserEmail();
     final role = await TokenStorage.getUserRole();
+    final phone = await TokenStorage.getUserPhone();
     final idStr = await TokenStorage.getUserId();
     if (name == null || email == null) return null;
     return UserModel(
       id: int.tryParse(idStr ?? '') ?? 1,
       name: name,
       email: email,
-      phone: '08123456789',
+      phone: (phone == null || phone.isEmpty) ? null : phone,
       role: role,
     );
   }

@@ -62,7 +62,7 @@ class PrinterConfig {
     this.name,
     this.paperWidth = 80,
     this.autoPrint = false,
-    this.printCopies = 1,
+    this.printCopies = 3,
     this.storeName = 'Shadja Restaurant',
     this.storeAddress = 'Jl. Contoh No. 123',
     this.storePhone = '08123456789',
@@ -192,7 +192,7 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
     final paper = int.tryParse(await TokenStorage.read(_kPaper) ?? '80') ?? 80;
     final auto = (await TokenStorage.read(_kAuto)) == 'true';
     final copies =
-        int.tryParse(await TokenStorage.read(_kCopies) ?? '1') ?? 1;
+        int.tryParse(await TokenStorage.read(_kCopies) ?? '3') ?? 3;
     var store = await TokenStorage.read(_kStore) ?? 'Shadja Restaurant';
     var addr = await TokenStorage.read(_kAddr) ?? 'Jl. Contoh No. 123';
     var phone = await TokenStorage.read(_kPhone) ?? '08123456789';
