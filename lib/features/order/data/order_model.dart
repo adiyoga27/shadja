@@ -95,6 +95,10 @@ class OrderModel {
     required this.subtotal,
     this.discount = 0,
     this.tax = 0,
+    this.additionalCost = 0,
+    this.additionalCostId,
+    this.additionalCostName,
+    this.additionalCostRate,
     required this.total,
     this.customerName,
     this.customerPhone,
@@ -112,6 +116,10 @@ class OrderModel {
   final num subtotal;
   final num discount;
   final num tax;
+  final num additionalCost;
+  final int? additionalCostId;
+  final String? additionalCostName;
+  final num? additionalCostRate;
   final num total;
   final String? customerName;
   final String? customerPhone;
@@ -129,6 +137,15 @@ class OrderModel {
         subtotal: _parseNum(json['subtotal']),
         discount: json['discount'] != null ? _parseNum(json['discount']) : 0,
         tax: json['tax'] != null ? _parseNum(json['tax']) : 0,
+        additionalCost:
+            json['additional_cost'] != null ? _parseNum(json['additional_cost']) : 0,
+        additionalCostId: json['additional_cost_id'] != null
+            ? (json['additional_cost_id'] as num).toInt()
+            : null,
+        additionalCostName: json['additional_cost_name'] as String?,
+        additionalCostRate: json['additional_cost_rate'] != null
+            ? _parseNum(json['additional_cost_rate'])
+            : null,
         total: _parseNum(json['total']),
         customerName: json['customer_name'] as String?,
         customerPhone: json['customer_phone'] as String?,

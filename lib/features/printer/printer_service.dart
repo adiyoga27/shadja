@@ -6,6 +6,8 @@ import 'package:flutter_usb_printer/flutter_usb_printer.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:shadja/features/order/data/order_model.dart';
 import 'package:shadja/features/printer/receipt_formatter.dart';
+import 'package:shadja/features/store_profile/data/store_profile_model.dart';
+import 'package:shadja/features/store_profile/data/store_profile_repository.dart';
 import 'package:shadja/core/storage/token_storage.dart';
 
 enum PrinterConnectionStatus { disconnected, connecting, connected }
@@ -151,9 +153,11 @@ class PrinterState {
 }
 
 class PrinterNotifier extends StateNotifier<PrinterState> {
-  PrinterNotifier() : super(const PrinterState()) {
+  PrinterNotifier(this._storeProfileRepo) : super(const PrinterState()) {
     _loadConfig();
   }
+
+  final StoreProfileRepository _storeProfileRepo;
 
   static const _kType = 'printer_type';
   static const _kMac = 'printer_mac';
@@ -189,9 +193,20 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
     final auto = (await TokenStorage.read(_kAuto)) == 'true';
     final copies =
         int.tryParse(await TokenStorage.read(_kCopies) ?? '1') ?? 1;
-    final store = await TokenStorage.read(_kStore) ?? 'Shadja Restaurant';
-    final addr = await TokenStorage.read(_kAddr) ?? 'Jl. Contoh No. 123';
-    final phone = await TokenStorage.read(_kPhone) ?? '08123456789';
+    var store = await TokenStorage.read(_kStore) ?? 'Shadja Restaurant';
+    var addr = await TokenStorage.read(_kAddr) ?? 'Jl. Contoh No. 123';
+    var phone = await TokenStorage.read(_kPhone) ?? '08123456789';
+
+    // Info toko diambil dari API (store-profiles); localStorage hanya fallback.
+    final profile = await _fetchStoreProfile();
+    if (profile != null) {
+      store = profile.storeName;
+      addr = profile.storeAddress;
+      phone = profile.storePhone;
+      await TokenStorage.write(_kStore, store);
+      await TokenStorage.write(_kAddr, addr);
+      await TokenStorage.write(_kPhone, phone);
+    }
 
     final config = PrinterConfig(
       connectionType: type,
@@ -220,6 +235,17 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
       }
       await Future.delayed(const Duration(milliseconds: 800));
       await connect();
+    }
+  }
+
+  Future<StoreProfileModel?> _fetchStoreProfile() async {
+    try {
+      return await _storeProfileRepo.fetch();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[Printer] fetch store profile gagal: $e');
+      }
+      return null;
     }
   }
 
@@ -439,10 +465,56 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
     await TokenStorage.write(_kPaper, config.paperWidth.toString());
     await TokenStorage.write(_kAuto, config.autoPrint ? 'true' : 'false');
     await TokenStorage.write(_kCopies, config.printCopies.toString());
-    await TokenStorage.write(_kStore, config.storeName);
-    await TokenStorage.write(_kAddr, config.storeAddress);
-    await TokenStorage.write(_kPhone, config.storePhone);
     state = state.copyWith(config: config);
+  }
+
+  /// Simpan info toko via API (store-profiles, PUT upsert).
+  /// Mengembalikan pesan error bila gagal sinkron, atau null bila berhasil.
+  Future<String?> updateStoreInfo({
+    required String storeName,
+    required String storeAddress,
+    required String storePhone,
+  }) async {
+    if (storeName.trim().isEmpty) return 'Nama toko wajib diisi.';
+
+    try {
+      final profile = await _storeProfileRepo.save(
+        storeName: storeName.trim(),
+        storeAddress: storeAddress.trim(),
+        storePhone: storePhone.trim(),
+      );
+      await Future.wait([
+        TokenStorage.write(_kStore, profile.storeName),
+        TokenStorage.write(_kAddr, profile.storeAddress),
+        TokenStorage.write(_kPhone, profile.storePhone),
+      ]);
+      state = state.copyWith(
+        config: state.config.copyWith(
+          storeName: profile.storeName,
+          storeAddress: profile.storeAddress,
+          storePhone: profile.storePhone,
+        ),
+      );
+      return null;
+    } catch (e) {
+      // Tetap simpan lokal agar struk bisa dicetak (offline fallback).
+      await Future.wait([
+        TokenStorage.write(_kStore, storeName.trim()),
+        TokenStorage.write(_kAddr, storeAddress.trim()),
+        TokenStorage.write(_kPhone, storePhone.trim()),
+      ]);
+      state = state.copyWith(
+        config: state.config.copyWith(
+          storeName: storeName.trim(),
+          storeAddress: storeAddress.trim(),
+          storePhone: storePhone.trim(),
+        ),
+      );
+      if (kDebugMode) {
+        debugPrint('[Printer] save store profile gagal: $e');
+      }
+      return 'Gagal sinkron info toko ke server. Data disimpan lokal.';
+    }
   }
 
   Future<void> printReceipt(OrderModel order) async {
@@ -520,5 +592,5 @@ class PrinterException implements Exception {
 
 final printerProvider =
     StateNotifierProvider<PrinterNotifier, PrinterState>(
-  (ref) => PrinterNotifier(),
+  (ref) => PrinterNotifier(ref.read(storeProfileRepositoryProvider)),
 );

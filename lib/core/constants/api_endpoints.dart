@@ -23,6 +23,9 @@ class ApiEndpoints {
   // Additional costs (biaya tambahan, mis. service charge)
   static String get additionalCosts => _path('/additional-costs');
 
+  // Store profiles (info toko untuk struk)
+  static String get storeProfiles => _path('/store-profiles');
+
   // Payments
   static String get paymentCallback => _path('/payments/callback');
   static String payment(int id) => _path('/payments/$id');

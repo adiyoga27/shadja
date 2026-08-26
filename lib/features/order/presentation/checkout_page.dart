@@ -28,7 +28,6 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   String _orderType = 'dine-in';
   String _discountType = 'rp';
   int? _selectedTableId;
-  int? _selectedAdditionalCostId;
 
   @override
   void dispose() {
@@ -50,12 +49,13 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     return d;
   }
 
+  // Biaya tambahan (service charge) diterapkan otomatis pada pesanan,
+  // tanpa harus dipilih manual oleh kasir.
   AdditionalCostModel? _additionalCost(List<AdditionalCostModel> costs) {
-    if (_selectedAdditionalCostId == null) return null;
-    for (final c in costs) {
-      if (c.id == _selectedAdditionalCostId) return c;
-    }
-    return null;
+    if (costs.isEmpty) return null;
+    final sorted = [...costs]..sort((a, b) =>
+        (a.sortOrder ?? 999).compareTo(b.sortOrder ?? 999));
+    return sorted.first;
   }
 
   num _serviceCharge(List<AdditionalCostModel> costs) {
@@ -328,11 +328,33 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
           ),
           const SizedBox(height: 12),
 
-          // Additional costs (service charge dll) dari API
+          // Biaya tambahan (service charge) — diterapkan otomatis
           Consumer(
             builder: (context, ref, _) {
               final costsAsync = ref.watch(additionalCostsProvider);
               return costsAsync.when(
+                data: (costs) {
+                  final cost = _additionalCost(costs);
+                  if (cost == null) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.room_service_outlined,
+                            size: 18, color: AppColors.info),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Biaya tambahan ${cost.name} (${cost.rate}%) diterapkan otomatis',
+                            style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
                 loading: () => const Padding(
                   padding: EdgeInsets.symmetric(vertical: 8),
                   child: SizedBox(
@@ -340,50 +362,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                       child: Center(
                           child: CircularProgressIndicator(strokeWidth: 2))),
                 ),
-                error: (_, _) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.error_outline,
-                          size: 18, color: AppColors.danger),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text(
-                          'Gagal memuat biaya tambahan.',
-                          style:
-                              TextStyle(color: AppColors.danger, fontSize: 13),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () =>
-                            ref.invalidate(additionalCostsProvider),
-                        child: const Text('Coba lagi'),
-                      ),
-                    ],
-                  ),
-                ),
-                data: (costs) {
-                  if (costs.isEmpty) return const SizedBox.shrink();
-                  return DropdownButtonFormField<int>(
-                    initialValue: _selectedAdditionalCostId,
-                    isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Biaya Tambahan (dari API)',
-                      prefixIcon:
-                          Icon(Icons.room_service_outlined, size: 18),
-                    ),
-                    items: [
-                      for (final c in costs)
-                        DropdownMenuItem(
-                          value: c.id,
-                          child: Text(
-                              '${c.name} (${c.rate}%) - Rp ${Formatters.rupiah(((ref.read(cartProvider).subtotal - _discount) * c.rate / 100).round())}'),
-                        ),
-                    ],
-                    onChanged: (v) =>
-                        setState(() => _selectedAdditionalCostId = v),
-                  );
-                },
+                error: (_, _) => const SizedBox.shrink(),
               );
             },
           ),

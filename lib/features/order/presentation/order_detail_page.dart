@@ -147,11 +147,21 @@ class OrderDetailPage extends ConsumerWidget {
               child: Column(
                 children: [
                   _PriceRow(label: 'Subtotal', value: Formatters.rupiah(order.subtotal)),
+                  if (order.additionalCost > 0)
+                    _PriceRow(
+                        label: _costLabel(order),
+                        value: '+ ${Formatters.rupiah(order.additionalCost)}',
+                        color: AppColors.info),
                   if (order.discount > 0)
                     _PriceRow(
                         label: 'Diskon',
                         value: '- ${Formatters.rupiah(order.discount)}',
                         color: AppColors.danger),
+                  if (order.tax > 0)
+                    _PriceRow(
+                        label: 'Pajak',
+                        value: '+ ${Formatters.rupiah(order.tax)}',
+                        color: AppColors.warning),
                   const Divider(height: 24),
                   _PriceRow(
                       label: 'Total',
@@ -252,6 +262,16 @@ class OrderDetailPage extends ConsumerWidget {
         return (BadgeStatus.info, 'Baru');
     }
   }
+
+  static String _rateText(num? rate) {
+    if (rate == null) return '';
+    final r = rate.toDouble();
+    final text = r == r.roundToDouble() ? r.toInt().toString() : r.toString();
+    return ' ($text%)';
+  }
+
+  static String _costLabel(OrderModel order) =>
+      '${order.additionalCostName ?? 'Biaya Tambahan'}${_rateText(order.additionalCostRate)}';
 
   String _orderTypeLabel(String type) {
     switch (type) {

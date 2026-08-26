@@ -48,19 +48,17 @@ class _PrinterSettingsPageState extends ConsumerState<PrinterSettingsPage> {
   }
 
   Future<void> _save() async {
-    final cur = ref.read(printerProvider).config;
-    await ref.read(printerProvider.notifier).updateConfig(
-          cur.copyWith(
-            storeName: _storeCtrl.text.trim(),
-            storeAddress: _addrCtrl.text.trim(),
-            storePhone: _phoneCtrl.text.trim(),
-          ),
+    final error = await ref.read(printerProvider.notifier).updateStoreInfo(
+          storeName: _storeCtrl.text.trim(),
+          storeAddress: _addrCtrl.text.trim(),
+          storePhone: _phoneCtrl.text.trim(),
         );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Pengaturan disimpan.'),
-            backgroundColor: AppColors.success),
+        SnackBar(
+          content: Text(error ?? 'Info toko disimpan & disinkronkan ke server.'),
+          backgroundColor: error == null ? AppColors.success : AppColors.danger,
+        ),
       );
     }
   }

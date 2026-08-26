@@ -159,11 +159,32 @@ class ReceiptFormatter {
           width: 6,
           styles: bodyRight()),
     ]));
+    if (order.additionalCost > 0) {
+      add(generator.row([
+        PosColumn(
+            text: _costLabel(order),
+            width: 6,
+            styles: bodyStyle()),
+        PosColumn(
+            text: '+ ${Formatters.rupiah(order.additionalCost)}',
+            width: 6,
+            styles: bodyRight()),
+      ]));
+    }
     if (order.discount > 0) {
       add(generator.row([
         PosColumn(text: 'Diskon', width: 6, styles: bodyStyle()),
         PosColumn(
             text: '- ${Formatters.rupiah(order.discount)}',
+            width: 6,
+            styles: bodyRight()),
+      ]));
+    }
+    if (order.tax > 0) {
+      add(generator.row([
+        PosColumn(text: 'Pajak', width: 6, styles: bodyStyle()),
+        PosColumn(
+            text: '+ ${Formatters.rupiah(order.tax)}',
             width: 6,
             styles: bodyRight()),
       ]));
@@ -228,6 +249,17 @@ class ReceiptFormatter {
 
   static int _maxChars(int paperWidth) => paperWidth == 58 ? 32 : 48;
 
+  static String _costLabel(OrderModel order) {
+    final rate = order.additionalCostRate;
+    String rateText = '';
+    if (rate != null) {
+      final d = rate.toDouble();
+      rateText =
+          d == d.roundToDouble() ? ' ${d.toInt()}%' : ' $d%';
+    }
+    return '${order.additionalCostName ?? 'Biaya Tambahan'}$rateText';
+  }
+
   // --- Text formatter (debug only) ---
   static const _line80 =
       '----------------------------------------------------------------';
@@ -284,9 +316,18 @@ class ReceiptFormatter {
 
     sb.writeln(
         '${'Subtotal'.padRight(width - Formatters.rupiah(order.subtotal).length)}${Formatters.rupiah(order.subtotal)}');
+    if (order.additionalCost > 0) {
+      final label = _costLabel(order);
+      final val = '+${Formatters.rupiah(order.additionalCost)}';
+      sb.writeln('${label.padRight(width - val.length)}$val');
+    }
     if (order.discount > 0) {
       sb.writeln(
           '${'Diskon'.padRight(width - Formatters.rupiah(order.discount).length)}-${Formatters.rupiah(order.discount)}');
+    }
+    if (order.tax > 0) {
+      sb.writeln(
+          '${'Pajak'.padRight(width - Formatters.rupiah(order.tax).length)}+${Formatters.rupiah(order.tax)}');
     }
     sb.writeln(line);
     final totalStr = Formatters.rupiah(order.total);
