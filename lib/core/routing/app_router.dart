@@ -141,11 +141,18 @@ class MainShell extends ConsumerStatefulWidget {
 
 class _MainShellState extends ConsumerState<MainShell> {
   final _scaffoldKey = GlobalKey<ScaffoldState>();
+  final _sidebarCtrl = SidebarController();
 
   @override
   void initState() {
     super.initState();
     _checkBluetoothPermission();
+  }
+
+  @override
+  void dispose() {
+    _sidebarCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _checkBluetoothPermission() async {
@@ -172,60 +179,69 @@ class _MainShellState extends ConsumerState<MainShell> {
         key: _scaffoldKey,
         drawer: _buildDrawer(context, index),
         body: ShellDrawerScope(
-          openDrawer: () => _scaffoldKey.currentState?.openDrawer(),
+          scaffoldKey: _scaffoldKey,
           child: widget.child,
         ),
       ),
       tabletLandscape: (c) => Scaffold(
-        body: Row(
-          children: [
-            // Side navigation
-            Container(
-              width: 112,
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                border:
-                    Border(right: BorderSide(color: AppColors.border)),
-              ),
-              child: SafeArea(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 16),
-                    const _SideNavLogo(),
-                    const SizedBox(height: 24),
-                    _SideNavItem(
-                        icon: Icons.restaurant,
-                        label: 'Kasir',
-                        selected: index == 0,
-                        onTap: () => _onTap(context, 0)),
-                    _SideNavItem(
-                        icon: Icons.assignment_outlined,
-                        label: 'Order',
-                        selected: index == 1,
-                        onTap: () => _onTap(context, 1)),
-                    _SideNavItem(
-                        icon: Icons.calendar_month,
-                        label: 'Reservasi',
-                        selected: index == 2,
-                        onTap: () => _onTap(context, 2)),
-                    _SideNavItem(
-                        icon: Icons.print_outlined,
-                        label: 'Printer',
-                        selected: index == 3,
-                        onTap: () => _onTap(context, 3)),
-                    const Spacer(),
-                    _SideNavItem(
-                        icon: Icons.person_outline,
-                        label: 'Profil',
-                        selected: index == 4,
-                        onTap: () => _onTap(context, 4)),
-                    const SizedBox(height: 14),
-                  ],
+        body: ShellDrawerScope(
+          sidebarController: _sidebarCtrl,
+          child: Row(
+            children: [
+              // Side navigation (bisa disembunyikan via tombol hamburger)
+              ListenableBuilder(
+                listenable: _sidebarCtrl,
+                builder: (context, _) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  width: _sidebarCtrl.visible ? 112 : 0,
+                  clipBehavior: Clip.hardEdge,
+                  decoration: const BoxDecoration(
+                    color: AppColors.surface,
+                    border:
+                        Border(right: BorderSide(color: AppColors.border)),
+                  ),
+                  child: SafeArea(
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 16),
+                        const _SideNavLogo(),
+                        const SizedBox(height: 24),
+                        _SideNavItem(
+                            icon: Icons.restaurant,
+                            label: 'Kasir',
+                            selected: index == 0,
+                            onTap: () => _onTap(context, 0)),
+                        _SideNavItem(
+                            icon: Icons.assignment_outlined,
+                            label: 'Order',
+                            selected: index == 1,
+                            onTap: () => _onTap(context, 1)),
+                        _SideNavItem(
+                            icon: Icons.calendar_month,
+                            label: 'Reservasi',
+                            selected: index == 2,
+                            onTap: () => _onTap(context, 2)),
+                        _SideNavItem(
+                            icon: Icons.print_outlined,
+                            label: 'Printer',
+                            selected: index == 3,
+                            onTap: () => _onTap(context, 3)),
+                        const Spacer(),
+                        _SideNavItem(
+                            icon: Icons.person_outline,
+                            label: 'Profil',
+                            selected: index == 4,
+                            onTap: () => _onTap(context, 4)),
+                        const SizedBox(height: 14),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-            Expanded(child: widget.child),
-          ],
+              Expanded(child: widget.child),
+            ],
+          ),
         ),
       ),
     );
