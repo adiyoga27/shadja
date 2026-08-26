@@ -241,7 +241,7 @@ class _KasirPageState extends ConsumerState<KasirPage> {
       );
     }
 
-    final cols = isMobile(context) ? 2 : 3;
+    final cols = isMobile(context) ? 2 : 6;
     final itemsToDisplay = items.where((m) => m.isActive).toList();
 
     return MasonryGridViewReduce(
@@ -277,7 +277,7 @@ class _KasirPageState extends ConsumerState<KasirPage> {
   }
 
   Widget _buildGridSkeleton() {
-    final cols = isMobile(context) ? 2 : 3;
+    final cols = isMobile(context) ? 2 : 6;
     return MasonryGridViewReduce(
       crossAxisCount: cols,
       crossAxisSpacing: 12,
