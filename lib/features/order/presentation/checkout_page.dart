@@ -299,6 +299,15 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                         final idx = cart.items.indexOf(it);
                         ref.read(cartProvider.notifier).removeItem(idx);
                       },
+                      onNotesTap: () async {
+                        final result = await showItemNotesDialog(context, it);
+                        if (result != null && context.mounted) {
+                          ref.read(cartProvider.notifier).updateNotes(
+                                it.menuItem,
+                                result.isEmpty ? null : result,
+                              );
+                        }
+                      },
                     ),
                     if (it != cart.items.last)
                       const Divider(color: AppColors.border, height: 1),

@@ -15,31 +15,7 @@ class CartPanel extends ConsumerWidget {
 
   Future<void> _editNotes(
       BuildContext context, WidgetRef ref, CartItemModel item) async {
-    final ctrl = TextEditingController(text: item.notes ?? '');
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Catatan Item'),
-        content: TextField(
-          controller: ctrl,
-          maxLines: 3,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Contoh: tanpa gula, level 2',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
-    );
+    final result = await showItemNotesDialog(context, item);
     if (result != null && context.mounted) {
       ref.read(cartProvider.notifier).updateNotes(
             item.menuItem,

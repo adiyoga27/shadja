@@ -3,6 +3,36 @@ import 'package:shadja/core/constants/app_colors.dart';
 import 'package:shadja/core/utils/formatters.dart';
 import 'package:shadja/features/menu/data/cart_item_model.dart';
 
+/// Dialog catatan opsional untuk satu item keranjang.
+/// Mengembalikan teks catatan (null bila dibatalkan).
+Future<String?> showItemNotesDialog(BuildContext context, CartItemModel item) {
+  final ctrl = TextEditingController(text: item.notes ?? '');
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Catatan Item'),
+      content: TextField(
+        controller: ctrl,
+        maxLines: 3,
+        autofocus: true,
+        decoration: const InputDecoration(
+          hintText: 'Contoh: tanpa gula, level 2',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+          child: const Text('Simpan'),
+        ),
+      ],
+    ),
+  );
+}
+
 class CartItemTile extends StatelessWidget {
   const CartItemTile({
     super.key,
