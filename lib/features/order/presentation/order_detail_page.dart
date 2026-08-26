@@ -7,6 +7,7 @@ import 'package:shadja/core/utils/formatters.dart';
 import 'package:shadja/features/order/data/order_model.dart';
 import 'package:shadja/features/order/presentation/order_provider.dart';
 import 'package:shadja/features/printer/presentation/print_dialog.dart';
+import 'package:shadja/features/reservation/presentation/reservation_provider.dart';
 import 'package:shadja/shared/widgets/loading_state.dart';
 import 'package:shadja/shared/widgets/status_badge.dart';
 
@@ -450,6 +451,8 @@ class _ProgressButtonsState extends ConsumerState<_ProgressButtons> {
     if (!mounted) return;
     setState(() => _updating = false);
     ref.invalidate(orderDetailProvider(widget.order.id));
+    // Status selesai/dibatalkan → meja kembali kosong; segarkan meja.
+    ref.invalidate(tablesProvider);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(ok ? 'Status diperbarui' : 'Gagal memperbarui status')),
     );

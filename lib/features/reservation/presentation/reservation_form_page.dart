@@ -84,6 +84,7 @@ class _ReservationFormPageState extends ConsumerState<ReservationFormPage> {
     setState(() => _submitting = false);
     if (res != null && mounted) {
       ref.invalidate(reservationListProvider);
+      ref.invalidate(tablesProvider);
       context.go('/home/reservations/${res.id}');
     } else if (mounted) {
       final err = ref.read(createReservationProvider).error;

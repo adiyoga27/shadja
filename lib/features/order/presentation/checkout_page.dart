@@ -125,6 +125,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     if (payment != null && payment.success && mounted) {
       ref.read(cartProvider.notifier).clear();
       ref.read(orderHistoryProvider.notifier).load();
+      // Meja yang dipilih kini terisi — segarkan status meja.
+      ref.invalidate(tablesProvider);
       if (mounted) context.go('/payment-success/${order.id}');
     }
     ref.read(checkoutProvider.notifier).reset();
