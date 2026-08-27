@@ -27,12 +27,16 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
 final goRouterProvider = Provider<GoRouter>((ref) {
-  final auth = ref.watch(authProvider);
-
-  return GoRouter(
+  // CATATAN: GoRouter hanya dibuat SEKALI. Membuat GoRouter baru setiap ada
+  // perubahan state (mis. `ref.watch(authProvider)` di sini) akan membuat dua
+  // Navigator dengan GlobalKey yang sama di pohon widget → error
+  // "A GlobalKey can only be specified on one widget at a time" dan freeze.
+  final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/splash',
     redirect: (context, state) {
+      // Dibaca saat navigasi/refresh, bukan watch — router tetap stabil.
+      final auth = ref.read(authProvider);
       final status = auth.status;
       final path = state.matchedLocation;
       const authPaths = ['/splash', '/login', '/register'];
@@ -118,6 +122,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+
+  // Saat status auth berubah (login/logout/sesi berakhir), jalankan ulang
+  // redirect lewat `refresh()` — tanpa membuat GoRouter baru.
+  ref.listen(authProvider, (prev, next) {
+    if (prev?.status != next.status) {
+      router.refresh();
+    }
+  });
+
+  return router;
 });
 
 class NoOpPage<T> extends CustomTransitionPage<T> {

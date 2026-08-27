@@ -84,14 +84,8 @@ class _OrderHistoryPageState extends ConsumerState<OrderHistoryPage> {
       );
     }
     final orders = _applySearch(state.filteredOrders, state.searchQuery);
-    if (orders.isEmpty) {
-      return const EmptyState(
-        icon: Icons.assignment_outlined,
-        title: 'Belum ada order',
-        subtitle: 'Order yang dibuat akan muncul di sini.',
-      );
-    }
 
+    // Search + tab filter tetap tampil walau daftar order kosong.
     return Column(
       children: [
         Padding(
@@ -120,18 +114,29 @@ class _OrderHistoryPageState extends ConsumerState<OrderHistoryPage> {
               ref.read(orderHistoryProvider.notifier).setFilter(s),
         ),
         Expanded(
-          child: RefreshIndicator(
-            onRefresh: () => ref.read(orderHistoryProvider.notifier).load(),
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
-              itemCount: orders.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final order = orders[index];
-                return _OrderTile(order: order);
-              },
-            ),
-          ),
+          child: orders.isEmpty
+              ? EmptyState(
+                  icon: Icons.assignment_outlined,
+                  title: state.searchQuery.isNotEmpty
+                      ? 'Order tidak ditemukan'
+                      : 'Belum ada order',
+                  subtitle: state.searchQuery.isNotEmpty
+                      ? 'Coba kata kunci lain.'
+                      : 'Order yang dibuat akan muncul di sini.',
+                )
+              : RefreshIndicator(
+                  onRefresh: () =>
+                      ref.read(orderHistoryProvider.notifier).load(),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                    itemCount: orders.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final order = orders[index];
+                      return _OrderTile(order: order);
+                    },
+                  ),
+                ),
         ),
       ],
     );
