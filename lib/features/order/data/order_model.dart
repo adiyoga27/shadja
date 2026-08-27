@@ -31,9 +31,11 @@ class OrderItemModel {
         menuItemName: (json['menu_item']?['name'] as String?) ??
             json['item_name'] as String? ??
             'Menu #${json['menu_item_id']}',
-        price: json['menu_item']?['price'] != null
-            ? _parseNum(json['menu_item']?['price'])
-            : _parseNum(json['price']),
+        // Harga snapshot transaksi (sudah sesuai tipe order, termasuk harga
+        // take away untuk order pickup). Harga menu saat ini hanya fallback.
+        price: json['price'] != null
+            ? _parseNum(json['price'])
+            : _parseNum(json['menu_item']?['price']),
         quantity: (json['quantity'] as num).toInt(),
         itemDiscount: json['item_discount'] != null ? _parseNum(json['item_discount']) : null,
         subtotal: _parseNum(json['subtotal']),

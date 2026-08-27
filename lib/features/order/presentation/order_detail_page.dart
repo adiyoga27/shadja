@@ -131,7 +131,10 @@ class OrderDetailPage extends ConsumerWidget {
               child: Column(
                 children: [
                   for (final item in order.orderItems) ...[
-                    _ItemRow(item: item),
+                    _ItemRow(
+                      item: item,
+                      isTakeaway: order.orderType == 'pickup',
+                    ),
                     if (item != order.orderItems.last)
                       const Divider(color: AppColors.border, height: 1),
                   ],
@@ -323,8 +326,9 @@ class _InfoRow extends StatelessWidget {
 }
 
 class _ItemRow extends StatelessWidget {
-  const _ItemRow({required this.item});
+  const _ItemRow({required this.item, this.isTakeaway = false});
   final OrderItemModel item;
+  final bool isTakeaway;
 
   @override
   Widget build(BuildContext context) {
@@ -355,9 +359,17 @@ class _ItemRow extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary)),
                 Text(
-                  Formatters.rupiah(item.price),
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary),
+                  isTakeaway
+                      ? 'Take Away • ${Formatters.rupiah(item.price)}'
+                      : Formatters.rupiah(item.price),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight:
+                        isTakeaway ? FontWeight.w600 : FontWeight.w400,
+                    color: isTakeaway
+                        ? AppColors.info
+                        : AppColors.textSecondary,
+                  ),
                 ),
                 if (item.notes != null && item.notes!.isNotEmpty)
                   Text(
