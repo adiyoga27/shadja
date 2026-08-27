@@ -14,6 +14,10 @@ class CartItemModel {
 
   num get lineTotal => menuItem.price * quantity;
 
+  /// Total baris untuk mode take away (memakai harga khusus jika ada).
+  num lineTotalFor(bool takeaway) =>
+      (takeaway ? menuItem.priceForTakeaway() : menuItem.price) * quantity;
+
   CartItemModel copyWith({
     MenuItemModel? menuItem,
     int? quantity,

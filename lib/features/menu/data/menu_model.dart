@@ -17,6 +17,7 @@ class MenuItemModel {
     required this.id,
     required this.name,
     required this.price,
+    this.takeawayPrice,
     this.image,
     this.description,
     this.isActive = true,
@@ -27,16 +28,24 @@ class MenuItemModel {
   final int id;
   final String name;
   final num price;
+  /// Harga khusus take away / pesan dibawa pulang (nilai 0/null = pakai [price]).
+  final num? takeawayPrice;
   final String? image;
   final String? description;
   final bool isActive;
   final int? categoryId;
   final String? categoryName;
 
+  /// Harga efektif untuk mode take away (jika ada harga khusus).
+  num priceForTakeaway() => takeawayPrice ?? price;
+
   factory MenuItemModel.fromJson(Map<String, dynamic> json) => MenuItemModel(
         id: ((json['id'] as num).toInt()),
         name: json['name'] as String,
         price: _parseNum(json['price']),
+        takeawayPrice: json['takeaway_price'] != null
+            ? _parseNum(json['takeaway_price'])
+            : null,
         image: _imageUrl(json['image'] as String?),
         description: json['description'] as String?,
         isActive: (json['is_active'] as bool?) ?? true,
@@ -48,6 +57,7 @@ class MenuItemModel {
         'id': id,
         'name': name,
         'price': price,
+        'takeaway_price': takeawayPrice,
         'image': image,
         'description': description,
         'is_active': isActive,
@@ -57,6 +67,7 @@ class MenuItemModel {
     int? id,
     String? name,
     num? price,
+    num? takeawayPrice,
     String? image,
     String? description,
     bool? isActive,
@@ -67,6 +78,7 @@ class MenuItemModel {
         id: id ?? this.id,
         name: name ?? this.name,
         price: price ?? this.price,
+        takeawayPrice: takeawayPrice ?? this.takeawayPrice,
         image: image ?? this.image,
         description: description ?? this.description,
         isActive: isActive ?? this.isActive,

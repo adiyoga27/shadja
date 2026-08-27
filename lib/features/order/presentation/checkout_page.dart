@@ -39,13 +39,23 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     super.dispose();
   }
 
+  // 'pickup' = take away: harga yang dipakai adalah takeaway_price bila tersedia.
+  bool get _isTakeaway => _orderType == 'pickup';
+
+  num get _subtotal {
+    final cart = ref.read(cartProvider);
+    if (!_isTakeaway) return cart.subtotal;
+    return cart.items
+        .fold(0, (sum, e) => sum + e.lineTotalFor(true));
+  }
+
   num get _discount {
     final raw = _discountCtrl.text.trim();
     if (raw.isEmpty) return 0;
     final d = num.tryParse(raw.replaceAll(RegExp(r'[^\d]'), ''));
     if (d == null) return 0;
     if (_discountType == 'pct') {
-      return (ref.read(cartProvider).subtotal * d / 100).round();
+      return (_subtotal * d / 100).round();
     }
     return d;
   }
@@ -62,12 +72,12 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
   num _serviceCharge(List<AdditionalCostModel> costs) {
     final cost = _additionalCost(costs);
     if (cost == null) return 0;
-    final base = ref.read(cartProvider).subtotal - _discount;
+    final base = _subtotal - _discount;
     return (base * cost.rate / 100).round();
   }
 
   num _total(List<AdditionalCostModel> costs) =>
-      ref.read(cartProvider).subtotal - _discount + _serviceCharge(costs);
+      _subtotal - _discount + _serviceCharge(costs);
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -291,6 +301,8 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                   for (final it in cart.items) ...[
                     CartItemTile(
                       item: it,
+                      priceOverride:
+                          _isTakeaway ? it.menuItem.priceForTakeaway() : null,
                       onIncrement: () => ref
                           .read(cartProvider.notifier)
                           .increment(it.menuItem, notes: it.notes),
@@ -384,7 +396,7 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
           // Summary
           _SectionTitle(title: 'Ringkasan Pembayaran'),
           const SizedBox(height: 8),
-          _PriceRow(label: 'Subtotal', value: Formatters.rupiah(cart.subtotal)),
+          _PriceRow(label: 'Subtotal', value: Formatters.rupiah(_subtotal)),
           if (_discount > 0)
             _PriceRow(
                 label: _discountType == 'pct'
@@ -524,7 +536,7 @@ class _OrderTypeSelector extends StatelessWidget {
 
   static const _options = [
     ('dine-in', 'Dine-in', Icons.restaurant),
-    ('pickup', 'Pickup', Icons.shopping_bag_outlined),
+    ('pickup', 'Take Away', Icons.shopping_bag_outlined),
     ('delivery', 'Delivery', Icons.pedal_bike),
   ];
 

@@ -37,6 +37,7 @@ class CartItemTile extends StatelessWidget {
   const CartItemTile({
     super.key,
     required this.item,
+    this.priceOverride,
     this.onIncrement,
     this.onDecrement,
     this.onRemove,
@@ -45,11 +46,16 @@ class CartItemTile extends StatelessWidget {
   });
 
   final CartItemModel item;
+
+  /// Harga tampilan (mis. harga take away); null = pakai harga menu.
+  final num? priceOverride;
   final VoidCallback? onIncrement;
   final VoidCallback? onDecrement;
   final VoidCallback? onRemove;
   final VoidCallback? onNotesTap;
   final bool compact;
+
+  num get _effectivePrice => priceOverride ?? item.menuItem.price;
 
   @override
   Widget build(BuildContext context) {
@@ -81,12 +87,21 @@ class CartItemTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${Formatters.rupiah(item.menuItem.price)} × ${item.quantity}',
+                  '${Formatters.rupiah(_effectivePrice)} × ${item.quantity}',
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
                   ),
                 ),
+                if (priceOverride != null)
+                  const Text(
+                    'Harga take away',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.info,
+                    ),
+                  ),
                 if (item.notes != null && item.notes!.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   InkWell(
@@ -128,7 +143,7 @@ class CartItemTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                Formatters.rupiah(item.lineTotal),
+                Formatters.rupiah(_effectivePrice * item.quantity),
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,

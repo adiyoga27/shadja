@@ -212,7 +212,7 @@ class _OrderTile extends ConsumerWidget {
       case 'dine-in':
         return 'Dine-in';
       case 'pickup':
-        return 'Pickup';
+        return 'Take Away';
       case 'delivery':
         return 'Delivery';
       default:

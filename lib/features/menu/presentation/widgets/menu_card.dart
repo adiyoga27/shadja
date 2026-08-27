@@ -109,6 +109,16 @@ class MenuCard extends StatelessWidget {
                       color: AppColors.primary,
                     ),
                   ),
+                  if (item.takeawayPrice != null &&
+                      item.takeawayPrice! != item.price)
+                    Text(
+                      'Take away: ${Formatters.rupiah(item.takeawayPrice!)}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.info,
+                      ),
+                    ),
                 ],
               ),
             ),
