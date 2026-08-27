@@ -21,7 +21,6 @@ import 'package:shadja/features/order/presentation/payment_success_page.dart';
 import 'package:shadja/features/reservation/presentation/reservation_form_page.dart';
 import 'package:shadja/features/reservation/presentation/reservation_detail_page.dart';
 import 'package:shadja/features/printer_settings/presentation/printer_scan_page.dart';
-import 'package:shadja/features/printer/printer_service.dart';
 import 'package:shadja/shared/widgets/shell_drawer_button.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -146,7 +145,10 @@ class _MainShellState extends ConsumerState<MainShell> {
   @override
   void initState() {
     super.initState();
-    _checkBluetoothPermission();
+    // Ditunda sampai setelah frame pertama agar dialog izin Bluetooth /
+    // perubahan inset sistem tidak muncul saat shell sedang di-layout
+    // (mencegah "RenderFlex was mutated in performLayout").
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkBluetoothPermission());
   }
 
   @override
@@ -170,7 +172,6 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(printerProvider);
     final location = GoRouterState.of(context).matchedLocation;
     final index = _selectedIndex(location);
 
@@ -434,6 +435,8 @@ class _SideNavItem extends StatelessWidget {
                 const SizedBox(height: 7),
                 Text(
                   label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight:

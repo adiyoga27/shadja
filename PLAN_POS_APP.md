@@ -222,7 +222,7 @@ Body `POST /orders`:
   "notes": "opsional",
   "delivery_address": "wajib jika order_type=delivery",
   "customer_name": "John Doe",
-  "customer_phone": "08123456789",
+  "customer_phone": "082342233213",
   "discount": 5000,
   "service_charge_rate": 5,        // opsional: service charge dalam persen (5 = 5%)
   "additional_cost_id": 1          // opsional: ID biaya tambahan dari master data (lihat GET /additional-costs)

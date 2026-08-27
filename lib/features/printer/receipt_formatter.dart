@@ -11,9 +11,9 @@ class ReceiptFormatter {
 
   static Future<List<int>> formatBytes({
     required OrderModel order,
-    String storeName = 'Shadja Restaurant',
-    String storeAddress = 'Jl. Contoh No. 123',
-    String storePhone = '08123456789',
+    String storeName = 'Shadja Karangasem',
+    String storeAddress = 'Jln Tunjung Bang, Bungaya Bebandem Karangasem',
+    String storePhone = '082342233213',
     int paperWidth = 80,
   }) async {
     final profile = await CapabilityProfile.load();
@@ -275,9 +275,9 @@ class ReceiptFormatter {
 
   static String formatText({
     required OrderModel order,
-    String storeName = 'Shadja Restaurant',
-    String storeAddress = 'Jl. Contoh No. 123',
-    String storePhone = '08123456789',
+    String storeName = 'Shadja Karangasem',
+    String storeAddress = 'Jln Tunjung Bang, Bungaya Bebandem Karangasem',
+    String storePhone = '082342233213',
     int paperWidth = 80,
   }) {
     final width = paperWidth == 58 ? 32 : 48;

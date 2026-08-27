@@ -63,9 +63,9 @@ class PrinterConfig {
     this.paperWidth = 80,
     this.autoPrint = false,
     this.printCopies = 3,
-    this.storeName = 'Shadja Restaurant',
-    this.storeAddress = 'Jl. Contoh No. 123',
-    this.storePhone = '08123456789',
+    this.storeName = 'Shadja Karangasem',
+    this.storeAddress = 'Jln Tunjung Bang, Bungaya Bebandem Karangasem',
+    this.storePhone = '082342233213',
   });
 
   final PrinterConnectionType connectionType;
@@ -193,9 +193,9 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
     final auto = (await TokenStorage.read(_kAuto)) == 'true';
     final copies =
         int.tryParse(await TokenStorage.read(_kCopies) ?? '3') ?? 3;
-    var store = await TokenStorage.read(_kStore) ?? 'Shadja Restaurant';
-    var addr = await TokenStorage.read(_kAddr) ?? 'Jl. Contoh No. 123';
-    var phone = await TokenStorage.read(_kPhone) ?? '08123456789';
+    var store = await TokenStorage.read(_kStore) ?? 'Shadja Karangasem';
+    var addr = await TokenStorage.read(_kAddr) ?? 'Jln Tunjung Bang, Bungaya Bebandem Karangasem';
+    var phone = await TokenStorage.read(_kPhone) ?? '082342233213';
 
     // Info toko diambil dari API (store-profiles); localStorage hanya fallback.
     final profile = await _fetchStoreProfile();
@@ -518,12 +518,24 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
   }
 
   Future<void> printReceipt(OrderModel order) async {
+    // Info toko diambil dari API (store-profiles) agar struk selalu terbaru.
+    // Lokal (state.config) hanya fallback bila API gagal / belum ada profil.
+    var storeName = state.config.storeName;
+    var storeAddress = state.config.storeAddress;
+    var storePhone = state.config.storePhone;
+    final profile = await _fetchStoreProfile();
+    if (profile != null) {
+      storeName = profile.storeName;
+      storeAddress = profile.storeAddress;
+      storePhone = profile.storePhone;
+    }
+
     final copies = state.config.printCopies.clamp(1, 9);
     final bytes = await ReceiptFormatter.formatBytes(
       order: order,
-      storeName: state.config.storeName,
-      storeAddress: state.config.storeAddress,
-      storePhone: state.config.storePhone,
+      storeName: storeName,
+      storeAddress: storeAddress,
+      storePhone: storePhone,
       paperWidth: state.config.paperWidth,
     );
     for (var i = 0; i < copies; i++) {
