@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:shadja/core/constants/app_colors.dart';
 import 'package:shadja/core/responsive/responsive_layout.dart';
+import 'package:shadja/features/auth/data/auth_model.dart';
 import 'package:shadja/features/auth/presentation/auth_provider.dart';
 import 'package:shadja/features/auth/presentation/login_page.dart';
 import 'package:shadja/features/auth/presentation/register_page.dart';
@@ -186,13 +187,14 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = ref.watch(authProvider);
     final location = GoRouterState.of(context).matchedLocation;
     final index = _selectedIndex(location);
 
     return ResponsiveLayout(
       mobile: (c) => Scaffold(
         key: _scaffoldKey,
-        drawer: _buildDrawer(context, index),
+        drawer: _buildDrawer(context, index, auth.user),
         body: ShellDrawerScope(
           scaffoldKey: _scaffoldKey,
           child: widget.child,
@@ -203,53 +205,66 @@ class _MainShellState extends ConsumerState<MainShell> {
           sidebarController: _sidebarCtrl,
           child: Row(
             children: [
-              // Side navigation (bisa disembunyikan via tombol hamburger)
+              // Side navigation modern (bisa disembunyikan via tombol hamburger)
               ListenableBuilder(
                 listenable: _sidebarCtrl,
                 builder: (context, _) => AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOut,
-                  width: _sidebarCtrl.visible ? 112 : 0,
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  width: _sidebarCtrl.visible ? _SideNav.width : 0,
                   clipBehavior: Clip.hardEdge,
                   decoration: const BoxDecoration(
-                    color: AppColors.surface,
-                    border:
-                        Border(right: BorderSide(color: AppColors.border)),
+                    gradient: _SideNav.gradient,
                   ),
-                  child: SafeArea(
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 16),
-                        const _SideNavLogo(),
-                        const SizedBox(height: 24),
-                        _SideNavItem(
-                            icon: Icons.restaurant,
-                            label: 'Kasir',
-                            selected: index == 0,
-                            onTap: () => _onTap(context, 0)),
-                        _SideNavItem(
-                            icon: Icons.assignment_outlined,
-                            label: 'Order',
-                            selected: index == 1,
-                            onTap: () => _onTap(context, 1)),
-                        _SideNavItem(
-                            icon: Icons.calendar_month,
-                            label: 'Reservasi',
-                            selected: index == 2,
-                            onTap: () => _onTap(context, 2)),
-                        _SideNavItem(
-                            icon: Icons.print_outlined,
-                            label: 'Printer',
-                            selected: index == 3,
-                            onTap: () => _onTap(context, 3)),
-                        const Spacer(),
-                        _SideNavItem(
-                            icon: Icons.person_outline,
-                            label: 'Profil',
+                  // Konten dipatok pada lebar tetap lalu di-clip saat
+                  // sidebar menutup — tidak ada penyempitan yang menyebabkan
+                  // overflow baris di dalamnya.
+                  child: OverflowBox(
+                    alignment: Alignment.centerLeft,
+                    minWidth: _SideNav.width,
+                    maxWidth: _SideNav.width,
+                    child: SafeArea(
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 18),
+                          const _SideNavBrand(),
+                          const SizedBox(height: 22),
+                          _SideNavItem(
+                              icon: Icons.point_of_sale,
+                              label: 'Kasir',
+                              selected: index == 0,
+                              onTap: () => _onTap(context, 0)),
+                          _SideNavItem(
+                              icon: Icons.receipt_long_outlined,
+                              label: 'Order',
+                              selected: index == 1,
+                              onTap: () => _onTap(context, 1)),
+                          _SideNavItem(
+                              icon: Icons.event_note_outlined,
+                              label: 'Reservasi',
+                              selected: index == 2,
+                              onTap: () => _onTap(context, 2)),
+                          _SideNavItem(
+                              icon: Icons.print_outlined,
+                              label: 'Printer',
+                              selected: index == 3,
+                              onTap: () => _onTap(context, 3)),
+                          const Spacer(),
+                          Container(
+                            height: 1,
+                            margin:
+                                const EdgeInsets.symmetric(horizontal: 20),
+                            color: Colors.white.withValues(alpha: 0.14),
+                          ),
+                          const SizedBox(height: 14),
+                          _SideNavProfile(
+                            user: auth.user,
                             selected: index == 4,
-                            onTap: () => _onTap(context, 4)),
-                        const SizedBox(height: 14),
-                      ],
+                            onTap: () => _onTap(context, 4),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -262,65 +277,75 @@ class _MainShellState extends ConsumerState<MainShell> {
     );
   }
 
-  Widget _buildDrawer(BuildContext context, int index) {
+  Widget _buildDrawer(BuildContext context, int index, UserModel? user) {
     return Drawer(
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-              child: Text(
-                'Menu',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary.withValues(alpha: 0.85),
+      width: 292,
+      backgroundColor: Colors.transparent,
+      child: Container(
+        decoration: const BoxDecoration(gradient: _SideNav.gradient),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 18),
+              const _SideNavBrand(),
+              const SizedBox(height: 22),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  children: [
+                    _SideNavItem(
+                        icon: Icons.point_of_sale,
+                        label: 'Kasir',
+                        selected: index == 0,
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          _onTap(context, 0);
+                        }),
+                    _SideNavItem(
+                        icon: Icons.receipt_long_outlined,
+                        label: 'Order',
+                        selected: index == 1,
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          _onTap(context, 1);
+                        }),
+                    _SideNavItem(
+                        icon: Icons.event_note_outlined,
+                        label: 'Reservasi',
+                        selected: index == 2,
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          _onTap(context, 2);
+                        }),
+                    _SideNavItem(
+                        icon: Icons.print_outlined,
+                        label: 'Printer',
+                        selected: index == 3,
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          _onTap(context, 3);
+                        }),
+                  ],
                 ),
               ),
-            ),
-            const Divider(height: 1),
-            _DrawerItem(
-                icon: Icons.restaurant,
-                label: 'Kasir',
-                selected: index == 0,
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _onTap(context, 0);
-                }),
-            _DrawerItem(
-                icon: Icons.assignment_outlined,
-                label: 'Order',
-                selected: index == 1,
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _onTap(context, 1);
-                }),
-            _DrawerItem(
-                icon: Icons.calendar_month,
-                label: 'Reservasi',
-                selected: index == 2,
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _onTap(context, 2);
-                }),
-            _DrawerItem(
-                icon: Icons.print_outlined,
-                label: 'Printer',
-                selected: index == 3,
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _onTap(context, 3);
-                }),
-            _DrawerItem(
-                icon: Icons.person_outline,
-                label: 'Profil',
+              Container(
+                height: 1,
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                color: Colors.white.withValues(alpha: 0.14),
+              ),
+              const SizedBox(height: 14),
+              _SideNavProfile(
+                user: user,
                 selected: index == 4,
                 onTap: () {
                   Navigator.of(context).pop();
                   _onTap(context, 4);
-                }),
-          ],
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );
@@ -351,31 +376,77 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 }
 
-class _SideNavLogo extends StatelessWidget {
-  const _SideNavLogo();
+/// Konstanta desain sidebar/drawer (lebar & gradien hijau gelap).
+class _SideNav {
+  _SideNav._();
+
+  static const double width = 232;
+  static const LinearGradient gradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF0C3B26), Color(0xFF166534), Color(0xFF15803D)],
+    stops: [0.0, 0.55, 1.0],
+  );
+}
+
+class _SideNavBrand extends StatelessWidget {
+  const _SideNavBrand();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 46,
-      height: 46,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.primaryDark],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.35),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.restaurant_menu,
+                color: AppColors.primary, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Shadja POS',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                Text(
+                  'Restaurant Solution',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.65),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
-      child: const Icon(Icons.restaurant_menu,
-          color: Colors.white, size: 24),
     );
   }
 }
@@ -395,69 +466,49 @@ class _SideNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fg = selected ? Colors.white : Colors.white.withValues(alpha: 0.7);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(14),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeOut,
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: selected ? AppColors.primaryBg : Colors.transparent,
-              border: Border.all(
-                color: selected ? AppColors.primary : Colors.transparent,
-                width: 1.2,
-              ),
-              borderRadius: BorderRadius.circular(20),
+              color: selected
+                  ? Colors.white.withValues(alpha: 0.16)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            child: Row(
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 4,
+                  height: 22,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: selected
-                        ? const LinearGradient(
-                            colors: [AppColors.primary, AppColors.primaryDark],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          )
-                        : null,
-                    color: selected ? null : AppColors.surfaceAlt,
-                    boxShadow: selected
-                        ? [
-                            BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.4),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 22,
-                    color: selected ? Colors.white : AppColors.textSecondary,
+                    color: selected ? Colors.white : Colors.transparent,
+                    borderRadius: BorderRadius.circular(999),
                   ),
                 ),
-                const SizedBox(height: 7),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight:
-                        selected ? FontWeight.w700 : FontWeight.w500,
-                    color: selected
-                        ? AppColors.primaryDark
-                        : AppColors.textSecondary,
+                const SizedBox(width: 12),
+                Icon(icon, size: 21, color: fg),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight:
+                          selected ? FontWeight.w700 : FontWeight.w500,
+                      color: fg,
+                    ),
                   ),
                 ),
               ],
@@ -469,49 +520,93 @@ class _SideNavItem extends StatelessWidget {
   }
 }
 
-class _DrawerItem extends StatelessWidget {
-  const _DrawerItem({
-    required this.icon,
-    required this.label,
+String _initials(String name) {
+  final parts = name.trim().split(RegExp(r'\s+'));
+  if (parts.length >= 2) {
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+  return name.isNotEmpty ? name[0].toUpperCase() : '?';
+}
+
+class _SideNavProfile extends StatelessWidget {
+  const _SideNavProfile({
+    required this.user,
     required this.selected,
     required this.onTap,
   });
 
-  final IconData icon;
-  final String label;
+  final UserModel? user;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final name = user?.name ?? 'Pengguna';
+    final role = (user?.role ?? 'kasir').toUpperCase();
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Material(
-        color: selected ? AppColors.primaryBg : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
+        color: selected
+            ? Colors.white.withValues(alpha: 0.16)
+            : Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               children: [
-                Icon(
-                  icon,
-                  size: 22,
-                  color:
-                      selected ? AppColors.primary : AppColors.textSecondary,
-                ),
-                const SizedBox(width: 14),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: selected
-                        ? AppColors.primary
-                        : AppColors.textPrimary,
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
                   ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    _initials(name),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        role,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withValues(alpha: 0.55),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: Colors.white.withValues(alpha: 0.45),
                 ),
               ],
             ),
