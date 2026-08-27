@@ -4,6 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadja/core/constants/api_endpoints.dart';
 import 'package:shadja/core/storage/token_storage.dart';
 
+/// Sinyal bahwa sesi login tidak valid (response 401 dari request mana pun).
+/// Dio menyalakannya; [AuthNotifier] mendengarnya untuk mengarahkan
+/// pengguna kembali ke halaman login.
+final sessionExpiredProvider = StateProvider<bool>((ref) => false);
+
 final dioClientProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
@@ -34,6 +39,9 @@ final dioClientProvider = Provider<Dio>((ref) {
         }
         if (e.response?.statusCode == 401) {
           TokenStorage.clear();
+          try {
+            ref.read(sessionExpiredProvider.notifier).state = true;
+          } catch (_) {}
         }
         handler.next(e);
       },

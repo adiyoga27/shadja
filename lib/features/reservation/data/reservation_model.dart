@@ -67,3 +67,23 @@ class ReservationModel {
             : null,
       );
 }
+
+/// Meja yang sedang dipakai pelanggan (order dine-in aktif),
+/// lengkap dengan nomor invoice (order number) dan nama pemesan.
+class OccupiedTableModel {
+  OccupiedTableModel({
+    required this.orderId,
+    required this.tableId,
+    required this.tableNumber,
+    required this.orderNumber,
+    required this.customerName,
+    required this.orderStatus,
+  });
+
+  final int orderId;
+  final int tableId;
+  final String tableNumber;
+  final String orderNumber;
+  final String customerName;
+  final String orderStatus;
+}

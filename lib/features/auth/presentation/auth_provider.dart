@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadja/core/network/dio_client.dart';
@@ -56,11 +57,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
         user: cached,
       );
       try {
+        // Validasi token ke server. Bila 401 (kedaluwarsa / tidak valid),
+        // jangan pakai cache: minta login ulang.
         final fresh = await _repo.fetchProfile();
         state = AuthState(
           status: AuthStatus.authenticated,
           user: fresh,
         );
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 401) {
+          state = AuthState(
+            status: AuthStatus.unauthenticated,
+            error: 'Sesi berakhir. Silakan login kembali.',
+          );
+          return;
+        }
+        // Offline / error lain: tetap pakai cache agar app tetap bisa dipakai.
+        if (kDebugMode) debugPrint('Refresh profile gagal, pakai cache: $e');
       } catch (e) {
         if (kDebugMode) debugPrint('Refresh profile gagal, pakai cache: $e');
       }
@@ -119,8 +132,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   void clearError() => state = state.copyWith(error: null);
+
+  /// Dipanggil saat ada response 401 dari request mana pun (token tidak valid).
+  /// Mengarahkan pengguna kembali ke halaman login.
+  void sessionExpired() {
+    if (state.status == AuthStatus.unauthenticated) return;
+    state = AuthState(
+      status: AuthStatus.unauthenticated,
+      error: 'Sesi berakhir. Silakan login kembali.',
+    );
+  }
 }
 
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>(
-  (ref) => AuthNotifier(ref.read(authRepositoryProvider)),
-);
+final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+  final notifier = AuthNotifier(ref.read(authRepositoryProvider));
+  ref.listen(sessionExpiredProvider, (prev, next) {
+    if (next == true) {
+      notifier.sessionExpired();
+      ref.read(sessionExpiredProvider.notifier).state = false;
+    }
+  });
+  return notifier;
+});

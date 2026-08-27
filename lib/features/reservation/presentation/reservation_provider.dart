@@ -5,11 +5,13 @@ import 'package:shadja/features/reservation/data/reservation_repository.dart';
 class ReservationListState {
   const ReservationListState({
     this.reservations = const [],
+    this.occupiedTables = const [],
     this.isLoading = false,
     this.error,
   });
 
   final List<ReservationModel> reservations;
+  final List<OccupiedTableModel> occupiedTables;
   final bool isLoading;
   final String? error;
 }
@@ -24,8 +26,14 @@ class ReservationListNotifier
   Future<void> load() async {
     state = const ReservationListState(isLoading: true);
     try {
-      final list = await _repo.fetchReservations();
-      state = ReservationListState(reservations: list);
+      final results = await Future.wait([
+        _repo.fetchReservations(),
+        _repo.fetchOccupiedTables(),
+      ]);
+      state = ReservationListState(
+        reservations: results[0] as List<ReservationModel>,
+        occupiedTables: results[1] as List<OccupiedTableModel>,
+      );
     } catch (e) {
       state = ReservationListState(error: e.toString());
     }

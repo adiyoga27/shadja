@@ -55,8 +55,9 @@ class ReservationListPage extends ConsumerWidget {
         onRetry: () => ref.read(reservationListProvider.notifier).load(),
       );
     }
+    final occupied = state.occupiedTables;
     final list = state.reservations;
-    if (list.isEmpty) {
+    if (occupied.isEmpty && list.isEmpty) {
       return const EmptyState(
         icon: Icons.event_busy,
         title: 'Belum ada reservasi',
@@ -67,14 +68,167 @@ class ReservationListPage extends ConsumerWidget {
     final sorted = List<ReservationModel>.from(list)
       ..sort((a, b) => a.reservationTime.compareTo(b.reservationTime));
 
-    return ListView.separated(
+    return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-      itemCount: sorted.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final r = sorted[index];
-        return _ReservationTile(reservation: r);
-      },
+      children: [
+        if (occupied.isNotEmpty) ...[
+          _SectionHeader(title: 'Meja Terisi', count: occupied.length),
+          const SizedBox(height: 8),
+          for (final t in occupied) ...[
+            _OccupiedTile(table: t),
+            const SizedBox(height: 10),
+          ],
+          const SizedBox(height: 8),
+        ],
+        if (sorted.isNotEmpty) ...[
+          _SectionHeader(title: 'Reservasi'),
+          const SizedBox(height: 8),
+          for (final r in sorted) ...[
+            _ReservationTile(reservation: r),
+            const SizedBox(height: 10),
+          ],
+        ] else ...[
+          const SizedBox(height: 8),
+          const Text(
+            'Belum ada reservasi.',
+            style: TextStyle(
+                fontSize: 13, color: AppColors.textSecondary),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title, this.count});
+
+  final String title;
+  final int? count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary),
+        ),
+        if (count != null) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: AppColors.dangerBg,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              '$count',
+              style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.danger),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Meja yang sedang dipakai pelanggan (order dine-in aktif):
+/// menampilkan nomor meja, nomor invoice, dan nama pemesan.
+class _OccupiedTile extends StatelessWidget {
+  const _OccupiedTile({required this.table});
+
+  final OccupiedTableModel table;
+
+  (BadgeStatus, String) _status() {
+    switch (table.orderStatus) {
+      case 'diproses':
+        return (BadgeStatus.warning, 'Diproses');
+      case 'siap':
+        return (BadgeStatus.info, 'Siap');
+      default:
+        return (BadgeStatus.info, 'Baru');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final badge = _status();
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => context.go('/home/orders/${table.orderId}'),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: AppColors.dangerBg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  table.tableNumber,
+                  style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.danger),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Meja ${table.tableNumber}',
+                          style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(width: 8),
+                        StatusBadge(label: badge.$2, status: badge.$1),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Invoice: ${table.orderNumber}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'a.n. ${table.customerName}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 13, color: AppColors.textPrimary),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right,
+                  color: AppColors.textHint, size: 20),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
