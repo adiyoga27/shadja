@@ -6,19 +6,21 @@ import 'package:flutter_usb_printer/flutter_usb_printer.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:shadja/features/order/data/order_model.dart';
 import 'package:shadja/features/printer/receipt_formatter.dart';
+import 'package:shadja/features/printer/windows_printer.dart';
 import 'package:shadja/features/store_profile/data/store_profile_model.dart';
 import 'package:shadja/features/store_profile/data/store_profile_repository.dart';
 import 'package:shadja/core/storage/token_storage.dart';
 
 enum PrinterConnectionStatus { disconnected, connecting, connected }
 
-enum PrinterConnectionType { bluetooth, network, usb }
+enum PrinterConnectionType { bluetooth, network, usb, windows }
 
 extension PrinterConnectionTypeLabel on PrinterConnectionType {
   String get label => switch (this) {
         PrinterConnectionType.bluetooth => 'Bluetooth',
         PrinterConnectionType.network => 'LAN (Wi-Fi)',
         PrinterConnectionType.usb => 'USB',
+        PrinterConnectionType.windows => 'USB (Windows)',
       };
 }
 
@@ -89,12 +91,15 @@ class PrinterConfig {
           ipAddress != null && ipAddress!.isNotEmpty,
         PrinterConnectionType.usb =>
           usbVendorId != null && usbProductId != null,
+        PrinterConnectionType.windows =>
+          name != null && name!.isNotEmpty,
       };
 
   String get displayAddress => switch (connectionType) {
         PrinterConnectionType.bluetooth => macAddress ?? '',
         PrinterConnectionType.network => '$ipAddress:$port',
         PrinterConnectionType.usb => '$usbVendorId:$usbProductId',
+        PrinterConnectionType.windows => name ?? '',
       };
 
   PrinterConfig copyWith({
@@ -181,6 +186,7 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
     final type = switch (typeStr) {
       'network' => PrinterConnectionType.network,
       'usb' => PrinterConnectionType.usb,
+      'windows' => PrinterConnectionType.windows,
       _ => PrinterConnectionType.bluetooth,
     };
     final mac = await TokenStorage.read(_kMac);
@@ -282,6 +288,18 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
     await connect();
   }
 
+  /// Menggunakan printer yang sudah terpasang drivernya di Windows
+  /// (mode USB Windows, mencetak via print spooler).
+  Future<void> setWindowsPrinter(String printerName) async {
+    await _saveConnection(
+      type: PrinterConnectionType.windows,
+      macAddress: null,
+      ipAddress: null,
+      name: printerName,
+    );
+    await connect();
+  }
+
   Future<void> _saveConnection({
     required PrinterConnectionType type,
     String? macAddress,
@@ -310,6 +328,11 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
         await TokenStorage.write(_kPid, (usbProductId ?? 0).toString());
         await TokenStorage.delete(_kMac);
         await TokenStorage.delete(_kIp);
+      case PrinterConnectionType.windows:
+        await TokenStorage.delete(_kMac);
+        await TokenStorage.delete(_kIp);
+        await TokenStorage.delete(_kVid);
+        await TokenStorage.delete(_kPid);
     }
     state = state.copyWith(
       config: state.config.copyWith(
@@ -340,6 +363,8 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
           await _connectNetwork(cfg.ipAddress!, cfg.port);
         case PrinterConnectionType.usb:
           await _connectUsb(cfg.usbVendorId!, cfg.usbProductId!);
+        case PrinterConnectionType.windows:
+          await _connectWindows(cfg.name!);
       }
     } catch (e) {
       if (kDebugMode) {
@@ -420,6 +445,14 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
     }
   }
 
+  Future<void> _connectWindows(String printerName) async {
+    if (!Platform.isWindows) {
+      throw PrinterException('Mode USB Windows hanya berjalan di Windows.');
+    }
+    WindowsPrinterService.instance.connect(printerName);
+    state = state.copyWith(status: PrinterConnectionStatus.connected);
+  }
+
   Future<void> disconnect() async {
     switch (state.config.connectionType) {
       case PrinterConnectionType.bluetooth:
@@ -428,6 +461,8 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
         await _closeSocket();
       case PrinterConnectionType.usb:
         await _usbPrinter.close();
+      case PrinterConnectionType.windows:
+        WindowsPrinterService.instance.close();
     }
     state = state.copyWith(status: PrinterConnectionStatus.disconnected);
   }
@@ -591,6 +626,14 @@ class PrinterNotifier extends StateNotifier<PrinterState> {
           throw PrinterException(
               'Gagal mengirim data ke printer USB. Pastikan kabel USB terhubung.');
         }
+      case PrinterConnectionType.windows:
+        if (!Platform.isWindows) {
+          throw PrinterException('Mode USB Windows hanya berjalan di Windows.');
+        }
+        if (!WindowsPrinterService.instance.isConnected) {
+          throw PrinterException('Printer belum terhubung.');
+        }
+        WindowsPrinterService.instance.printRaw(Uint8List.fromList(bytes));
     }
   }
 }

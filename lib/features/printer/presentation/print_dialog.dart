@@ -110,7 +110,7 @@ class _PrintDialogState extends ConsumerState<PrintDialog> {
 
     IconData typeIcon(bool on) => switch (cfg.connectionType) {
           PrinterConnectionType.network => Icons.lan_outlined,
-          PrinterConnectionType.usb =>
+          PrinterConnectionType.usb || PrinterConnectionType.windows =>
             on ? Icons.usb : Icons.usb_off_outlined,
           PrinterConnectionType.bluetooth =>
             on ? Icons.bluetooth_connected : Icons.bluetooth_disabled,

@@ -85,9 +85,9 @@ class PaymentSuccessPage extends ConsumerWidget {
                         Icon(
                           switch (cfg.connectionType) {
                             PrinterConnectionType.network => Icons.lan_outlined,
-                            PrinterConnectionType.usb => connected
-                                ? Icons.usb
-                                : Icons.usb_off_outlined,
+                            PrinterConnectionType.usb ||
+                            PrinterConnectionType.windows =>
+                              connected ? Icons.usb : Icons.usb_off_outlined,
                             PrinterConnectionType.bluetooth => connected
                                 ? Icons.bluetooth_connected
                                 : Icons.bluetooth_disabled,

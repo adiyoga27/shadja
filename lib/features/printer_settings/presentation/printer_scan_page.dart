@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_usb_printer/flutter_usb_printer.dart';
+import 'package:shadja/features/printer/windows_printer.dart';
 import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
@@ -42,6 +43,9 @@ class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
   // USB
   bool _usbScanning = false;
   List<UsbPrinterDevice> _usbDevices = [];
+
+  // USB Windows (printer terpasang di print spooler)
+  List<WindowsPrinterDevice> _windowsPrinters = [];
 
   @override
   void initState() {
@@ -269,6 +273,10 @@ class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
   // --- USB ---
 
   Future<void> _scanUsb() async {
+    if (Platform.isWindows) {
+      await _scanWindowsPrinters();
+      return;
+    }
     setState(() {
       _usbScanning = true;
       _usbDevices = [];
@@ -302,6 +310,42 @@ class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
 
   Future<void> _selectUsb(UsbPrinterDevice d) async {
     await ref.read(printerProvider.notifier).setUsbPrinter(d);
+    if (mounted) context.go('/home/printer');
+  }
+
+  Future<void> _scanWindowsPrinters() async {
+    setState(() {
+      _usbScanning = true;
+      _windowsPrinters = [];
+      _error = null;
+    });
+    try {
+      final results = await Future(() => WindowsPrinterService.listPrinters());
+      if (!mounted) return;
+      setState(() {
+        _windowsPrinters = results;
+        _usbScanning = false;
+      });
+      if (results.isEmpty) {
+        setState(() {
+          _error = 'Tidak ada printer terpasang di Windows.\n\n'
+              'Pastikan:\n'
+              '1. Driver printer iWare sudah diinstal di Windows\n'
+              '2. Printer terhubung via kabel USB & menyala\n'
+              '3. Printer muncul di Settings > Devices > Printers & Scanners';
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _usbScanning = false;
+        _error = 'Gagal memindai printer Windows: $e';
+      });
+    }
+  }
+
+  Future<void> _selectWindows(WindowsPrinterDevice d) async {
+    await ref.read(printerProvider.notifier).setWindowsPrinter(d.name);
     if (mounted) context.go('/home/printer');
   }
 
@@ -341,7 +385,9 @@ class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
               child: switch (_mode) {
                 PrinterConnectionType.bluetooth => _buildBluetoothTab(),
                 PrinterConnectionType.network => _buildLanTab(),
-                PrinterConnectionType.usb => _buildUsbTab(),
+                PrinterConnectionType.usb ||
+                PrinterConnectionType.windows =>
+                  _buildUsbTab(),
               },
             ),
           ],
@@ -555,7 +601,9 @@ class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
             error: _error,
             message: _error != null
                 ? null
-                : 'Colokkan printer iWare ke HP/tablet via kabel USB (OTG), lalu tekan "Scan USB".',
+                : Platform.isWindows
+                    ? 'Pilih printer yang sudah terpasang di Windows (driver terinstal, printer dicolok via USB), lalu tekan "Scan USB".'
+                    : 'Colokkan printer iWare ke HP/tablet via kabel USB (OTG), lalu tekan "Scan USB".',
           ),
           const SizedBox(height: 16),
           FilledButton.icon(
@@ -571,61 +619,125 @@ class _PrinterScanPageState extends ConsumerState<PrinterScanPage> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: _usbDevices.isEmpty
-                ? ListView(
-                    shrinkWrap: true,
-                    children: [
-                      if (!_usbScanning)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 24),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                Icon(Icons.usb_off_outlined,
-                                    size: 56, color: AppColors.textHint),
-                                SizedBox(height: 12),
-                                Text(
-                                  'Belum ada printer USB.',
-                                  style: TextStyle(
-                                      fontSize: 15,
-                                      color: AppColors.textPrimary),
-                                ),
-                                SizedBox(height: 24),
-                                Text(
-                                  'Cara menggunakan printer USB:\n'
-                                  '1. Nyalakan printer iWare\n'
-                                  '2. Hubungkan kabel USB (OTG) ke HP/tablet\n'
-                                  '3. Tekan "Scan USB"\n'
-                                  '4. Izinkan akses USB bila diminta\n'
-                                  '5. Pilih printer',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      color: AppColors.textSecondary,
-                                      height: 1.8),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                    ],
-                  )
-                : ListView.separated(
-                    itemCount: _usbDevices.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final d = _usbDevices[index];
-                      return _DeviceTile(
-                        icon: Icons.print_outlined,
-                        title: d.displayName,
-                        subtitle:
-                            'VID:${d.vendorId.toRadixString(16)} PID:${d.productId.toRadixString(16)} — ketuk untuk memilih',
-                        onTap: () => _selectUsb(d),
-                      );
-                    },
-                  ),
+            child: Platform.isWindows
+                ? _buildWindowsUsbList()
+                : _buildAndroidUsbList(),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAndroidUsbList() {
+    if (_usbDevices.isNotEmpty) {
+      return ListView.separated(
+        itemCount: _usbDevices.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
+        itemBuilder: (context, index) {
+          final d = _usbDevices[index];
+          return _DeviceTile(
+            icon: Icons.print_outlined,
+            title: d.displayName,
+            subtitle:
+                'VID:${d.vendorId.toRadixString(16)} PID:${d.productId.toRadixString(16)} — ketuk untuk memilih',
+            onTap: () => _selectUsb(d),
+          );
+        },
+      );
+    }
+    return ListView(
+      shrinkWrap: true,
+      children: [
+        if (!_usbScanning)
+          const Padding(
+            padding: EdgeInsets.only(top: 24),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(Icons.usb_off_outlined,
+                      size: 56, color: AppColors.textHint),
+                  SizedBox(height: 12),
+                  Text(
+                    'Belum ada printer USB.',
+                    style: TextStyle(
+                        fontSize: 15,
+                        color: AppColors.textPrimary),
+                  ),
+                  SizedBox(height: 24),
+                  Text(
+                    'Cara menggunakan printer USB:\n'
+                    '1. Nyalakan printer iWare\n'
+                    '2. Hubungkan kabel USB (OTG) ke HP/tablet\n'
+                    '3. Tekan "Scan USB"\n'
+                    '4. Izinkan akses USB bila diminta\n'
+                    '5. Pilih printer',
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        height: 1.8),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildWindowsUsbList() {
+    if (_windowsPrinters.isNotEmpty) {
+      return ListView.separated(
+        itemCount: _windowsPrinters.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
+        itemBuilder: (context, index) {
+          final d = _windowsPrinters[index];
+          return _DeviceTile(
+            icon: Icons.print_outlined,
+            title: d.name,
+            subtitle: [
+              if (d.driver != null && d.driver!.isNotEmpty) d.driver!,
+              if (d.port != null && d.port!.isNotEmpty) d.port!,
+            ].join(' • '),
+            onTap: () => _selectWindows(d),
+          );
+        },
+      );
+    }
+    return ListView(
+      shrinkWrap: true,
+      children: [
+        if (!_usbScanning)
+          const Padding(
+            padding: EdgeInsets.only(top: 24),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(Icons.usb_off_outlined,
+                      size: 56, color: AppColors.textHint),
+                  SizedBox(height: 12),
+                  Text(
+                    'Belum ada printer terpasang.',
+                    style: TextStyle(
+                        fontSize: 15,
+                        color: AppColors.textPrimary),
+                  ),
+                  SizedBox(height: 24),
+                  Text(
+                    'Cara menggunakan printer USB di Windows:\n'
+                    '1. Colokkan printer ke laptop via kabel USB\n'
+                    '2. Instal driver printer (otomatis atau dari CD/situs resmi)\n'
+                    '3. Pastikan muncul di Settings > Printers & Scanners\n'
+                    '4. Tekan "Scan USB" lalu pilih printer',
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        height: 1.8),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

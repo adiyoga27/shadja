@@ -16,9 +16,8 @@ class PrinterSettingsPage extends ConsumerStatefulWidget {
 IconData _typeIcon(PrinterConnectionType type, bool connected) =>
       switch (type) {
         PrinterConnectionType.network => Icons.lan_outlined,
-        PrinterConnectionType.usb => connected
-            ? Icons.usb
-            : Icons.usb_off_outlined,
+        PrinterConnectionType.usb || PrinterConnectionType.windows =>
+          connected ? Icons.usb : Icons.usb_off_outlined,
         PrinterConnectionType.bluetooth => connected
             ? Icons.bluetooth_connected
             : Icons.bluetooth_disabled,
@@ -167,7 +166,9 @@ class _PrinterSettingsPageState extends ConsumerState<PrinterSettingsPage> {
                     icon: Icon(
                       switch (cfg.connectionType) {
                         PrinterConnectionType.network => Icons.lan_outlined,
-                        PrinterConnectionType.usb => Icons.usb,
+                        PrinterConnectionType.usb ||
+                        PrinterConnectionType.windows =>
+                          Icons.usb,
                         PrinterConnectionType.bluetooth =>
                           Icons.bluetooth_searching,
                       },
