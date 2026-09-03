@@ -1,5 +1,5 @@
 #define MyAppName "Shadja"
-#define MyAppVersion "1.0.5"
+#define MyAppVersion "1.0.5 270826001"
 #define MyAppPublisher "PT Coding Aja Indonesia"
 #define MyAppExeName "shadja.exe"
 

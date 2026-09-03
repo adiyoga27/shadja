@@ -3,18 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadja/core/constants/app_colors.dart';
 import 'package:shadja/core/utils/formatters.dart';
 import 'package:shadja/features/order/data/order_model.dart';
+import 'package:shadja/features/order/data/order_repository.dart';
 import 'package:shadja/features/order/presentation/order_provider.dart';
 
 class PaymentResult {
-  PaymentResult({required this.success, this.payment});
+  PaymentResult({required this.success, this.payment, this.order});
   final bool success;
   final PaymentModel? payment;
+  final OrderModel? order;
 }
 
 class PaymentMethodSheet extends ConsumerStatefulWidget {
-  const PaymentMethodSheet({super.key, required this.order});
+  const PaymentMethodSheet({super.key, required this.request, required this.total});
 
-  final OrderModel order;
+  final CreateOrderRequest request;
+  final num total;
 
   @override
   ConsumerState<PaymentMethodSheet> createState() => _PaymentMethodSheetState();
@@ -44,11 +47,11 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
     return num.tryParse(raw.replaceAll(RegExp(r'[^\d]'), '')) ?? 0;
   }
 
-  num get _change => _cashReceived - widget.order.total;
+  num get _change => _cashReceived - widget.total;
 
   String? get _cashError {
     if (_method != 'cash') return null;
-    if (_cashReceived < widget.order.total) {
+    if (_cashReceived < widget.total) {
       return 'Uang diterima kurang dari total tagihan';
     }
     return null;
@@ -60,18 +63,21 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
       return;
     }
     setState(() => _processing = true);
-    final payment = await ref.read(checkoutProvider.notifier).pay(
-          orderId: widget.order.id,
+    final result = await ref.read(checkoutProvider.notifier).createAndPay(
+          request: widget.request,
           method: _method,
-          amount: widget.order.total,
           cashReceived: _method == 'cash' && _cashReceived > 0
               ? _cashReceived
               : null,
           change: _method == 'cash' && _change > 0 ? _change : null,
         );
     setState(() => _processing = false);
-    if (payment != null && mounted) {
-      Navigator.of(context).pop(PaymentResult(success: true, payment: payment));
+    if (result != null && mounted) {
+      Navigator.of(context).pop(PaymentResult(
+        success: true,
+        order: result.$1,
+        payment: result.$2,
+      ));
     } else {
       final err = ref.read(checkoutProvider).error;
       if (mounted) {
@@ -87,15 +93,17 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
+    return PopScope(
+      canPop: !_processing,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -127,7 +135,7 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
             ),
             const SizedBox(height: 4),
             Text(
-              'Total tagihan: ${Formatters.rupiah(widget.order.total)}',
+              'Total tagihan: ${Formatters.rupiah(widget.total)}',
               style: const TextStyle(
                 fontSize: 14,
                 color: AppColors.textSecondary,
@@ -241,6 +249,7 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );

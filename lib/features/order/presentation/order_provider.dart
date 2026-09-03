@@ -107,38 +107,26 @@ class CheckoutNotifier extends StateNotifier<CheckoutState> {
 
   final OrderRepository _repo;
 
-  Future<OrderModel?> submit(CreateOrderRequest req) async {
-    state = CheckoutState(isLoading: true);
-    try {
-      final order = await _repo.createOrder(req);
-      state = CheckoutState(createdOrder: order);
-      return order;
-    } catch (e) {
-      state = CheckoutState(error: e.toString());
-      return null;
-    }
-  }
-
-  Future<PaymentModel?> pay({
-    required int orderId,
+  Future<(OrderModel, PaymentModel)?> createAndPay({
+    required CreateOrderRequest request,
     required String method,
-    required num amount,
     String? reference,
     num? cashReceived,
     num? change,
   }) async {
     state = CheckoutState(isLoading: true);
     try {
+      final order = await _repo.createOrder(request);
       final payment = await _repo.pay(
-        orderId: orderId,
+        orderId: order.id,
         method: method,
-        amount: amount,
+        amount: order.total,
         reference: reference,
         cashReceived: cashReceived,
         change: change,
       );
-      state = CheckoutState(createdOrder: state.createdOrder);
-      return payment;
+      state = CheckoutState(createdOrder: order);
+      return (order, payment);
     } catch (e) {
       state = CheckoutState(error: e.toString());
       return null;

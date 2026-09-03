@@ -115,24 +115,19 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
       additionalCostId: selectedCost?.id,
     );
 
-    final order = await ref.read(checkoutProvider.notifier).submit(req);
-    if (order == null || !mounted) {
-      final err = ref.read(checkoutProvider).error;
-      if (err != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(err), backgroundColor: AppColors.danger));
-      }
-      return;
-    }
-
-    final payment = await showModalBottomSheet<PaymentResult>(
+    if (!mounted) return;
+    final result = await showModalBottomSheet<PaymentResult>(
       context: context,
       isScrollControlled: true,
-      isDismissible: !order.payments.isNotEmpty,
-      builder: (_) => PaymentMethodSheet(order: order),
+      isDismissible: true,
+      builder: (_) => PaymentMethodSheet(
+        request: req,
+        total: _total(costs),
+      ),
     );
 
-    if (payment != null && payment.success && mounted) {
+    if (result != null && result.success && result.order != null && mounted) {
+      final order = result.order!;
       ref.read(cartProvider.notifier).clear();
       ref.read(orderHistoryProvider.notifier).load();
       // Meja yang dipilih kini terisi — segarkan status meja.
