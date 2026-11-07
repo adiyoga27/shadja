@@ -501,14 +501,18 @@ class _PriceRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: isTotal ? 16 : 14,
-              fontWeight: isTotal ? FontWeight.w700 : FontWeight.normal,
-              color: isTotal ? AppColors.textPrimary : AppColors.textSecondary,
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: isTotal ? 16 : 14,
+                fontWeight: isTotal ? FontWeight.w700 : FontWeight.normal,
+                color:
+                    isTotal ? AppColors.textPrimary : AppColors.textSecondary,
+              ),
             ),
           ),
+          const SizedBox(width: 12),
           Text(
             value,
             style: TextStyle(

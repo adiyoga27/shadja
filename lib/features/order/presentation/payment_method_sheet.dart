@@ -95,7 +95,10 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
   Widget build(BuildContext context) {
     return PopScope(
       canPop: !_processing,
-      child: Container(
+      // Sheet naik di atas keyboard agar input uang & tombol tetap terlihat.
+      child: Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        child: Container(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
         decoration: const BoxDecoration(
           color: AppColors.surface,
@@ -103,6 +106,8 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
         ),
         child: SafeArea(
           top: false,
+          // Bisa di-scroll: isi sheet lebih tinggi dari layar saat landscape.
+          child: SingleChildScrollView(
           child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,12 +128,14 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
               children: [
                 const Icon(Icons.account_balance_wallet_outlined, color: AppColors.primary),
                 const SizedBox(width: 8),
-                const Text(
-                  'Pilih Metode Pembayaran',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                const Expanded(
+                  child: Text(
+                    'Pilih Metode Pembayaran',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
               ],
@@ -145,11 +152,11 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: MediaQuery.sizeOf(context).width < 320 ? 1 : 2,
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
-                childAspectRatio: 3.2,
+                mainAxisExtent: MediaQuery.textScalerOf(context).scale(52),
               ),
               itemCount: _methods.length,
               itemBuilder: (context, index) {
@@ -172,15 +179,18 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
                       children: [
                         Icon(m.$3, size: 24, color: m.$4),
                         const SizedBox(width: 10),
-                        Text(
-                          m.$2,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: selected ? m.$4 : AppColors.textPrimary,
+                        Expanded(
+                          child: Text(
+                            m.$2,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: selected ? m.$4 : AppColors.textPrimary,
+                            ),
                           ),
                         ),
-                        const Spacer(),
                         if (selected)
                           const Icon(Icons.check,
                               size: 18, color: AppColors.primary),
@@ -215,10 +225,12 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Kembalian',
-                        style: TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w600),
+                      const Expanded(
+                        child: Text(
+                          'Kembalian',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w600),
+                        ),
                       ),
                       Text(
                         _change >= 0
@@ -251,6 +263,8 @@ class _PaymentMethodSheetState extends ConsumerState<PaymentMethodSheet> {
           ],
         ),
         ),
+        ),
+      ),
       ),
     );
   }

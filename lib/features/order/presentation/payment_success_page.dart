@@ -25,8 +25,8 @@ class PaymentSuccessPage extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text('Gagal memuat: $e')),
           data: (order) => Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [

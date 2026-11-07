@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shadja/core/constants/app_colors.dart';
@@ -81,6 +84,9 @@ class _KasirPageState extends ConsumerState<KasirPage> {
   // ---- Tablet landscape (default utama) ----
   Widget _buildTabletLandscape(BuildContext context) {
     final menu = ref.watch(menuProvider);
+    // Dibatasi agar keranjang tidak melebar sia-sia di layar besar.
+    final cartWidth =
+        (MediaQuery.sizeOf(context).width * 0.27).clamp(280.0, 420.0);
 
     return Scaffold(
       appBar: AppBar(
@@ -100,17 +106,9 @@ class _KasirPageState extends ConsumerState<KasirPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Menu section (left, ~65%)
-            Expanded(
-              flex: 65,
-              child: _buildMenuBody(menu),
-            ),
+            Expanded(child: _buildMenuBody(menu)),
             const SizedBox(width: 16),
-            // Cart panel (right, ~35%)
-            Expanded(
-              flex: 35,
-              child: CartPanel(),
-            ),
+            SizedBox(width: cartWidth, child: CartPanel()),
           ],
         ),
       ),
@@ -136,7 +134,10 @@ class _KasirPageState extends ConsumerState<KasirPage> {
       ),
       body: Stack(
         children: [
-          _buildMenuBody(menu),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: _buildMenuBody(menu),
+          ),
           // Floating cart bar
           if (cart.totalQuantity > 0)
             Positioned(
@@ -165,13 +166,21 @@ class _KasirPageState extends ConsumerState<KasirPage> {
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold),
                           ),
-                          const Spacer(),
-                          Text(
-                            Formatters.rupiah(cart.subtotal),
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  Formatters.rupiah(cart.subtotal),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16),
+                                ),
+                              ),
+                            ),
                           ),
                           const SizedBox(width: 8),
                           const Icon(Icons.arrow_forward,
@@ -241,14 +250,9 @@ class _KasirPageState extends ConsumerState<KasirPage> {
       );
     }
 
-    const cols = 4;
     final itemsToDisplay = items.where((m) => m.isActive).toList();
 
-    return MasonryGridViewReduce(
-      crossAxisCount: cols,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 0.82,
+    return MenuGrid(
       itemCount: itemsToDisplay.length,
       itemBuilder: (context, index) {
         final item = itemsToDisplay[index];
@@ -277,12 +281,7 @@ class _KasirPageState extends ConsumerState<KasirPage> {
   }
 
   Widget _buildGridSkeleton() {
-    const cols = 4;
-    return MasonryGridViewReduce(
-      crossAxisCount: cols,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 0.82,
+    return MenuGrid(
       itemCount: 8,
       itemBuilder: (_, _) => const MenuCardSkeleton(),
     );
@@ -376,40 +375,66 @@ class _CategoryChip extends StatelessWidget {
   }
 }
 
-/// Manual masonry-style grid using SliverGrid since we want consistent
-/// children. Falls back to GridView.builder via this wrapper.
-class MasonryGridViewReduce extends StatelessWidget {
-  const MasonryGridViewReduce({
+/// Grid menu: jumlah kolom mengikuti lebar area grid, minimal 2 kolom.
+///
+/// Tinggi kartu = gambar (proporsional lebar kartu) + [infoHeight], sehingga
+/// area gambar tidak terdesak teks di layar sempit. Dihitung di fase layout
+/// lewat delegate, bukan `LayoutBuilder` (lihat catatan [ResponsiveLayout]).
+class MenuGridDelegate extends SliverGridDelegate {
+  const MenuGridDelegate({required this.infoHeight});
+
+  static const double maxTileWidth = 220;
+  static const double spacing = 12;
+  static const double imageRatio = 0.62;
+
+  final double infoHeight;
+
+  @override
+  SliverGridLayout getLayout(SliverConstraints constraints) {
+    final width = constraints.crossAxisExtent;
+    final columns = math.max(
+      2,
+      ((width + spacing) / (maxTileWidth + spacing)).ceil(),
+    );
+    final tileWidth = (width - spacing * (columns - 1)) / columns;
+    final tileHeight = tileWidth * imageRatio + infoHeight;
+    return SliverGridRegularTileLayout(
+      crossAxisCount: columns,
+      mainAxisStride: tileHeight + spacing,
+      crossAxisStride: tileWidth + spacing,
+      childMainAxisExtent: tileHeight,
+      childCrossAxisExtent: tileWidth,
+      reverseCrossAxis: axisDirectionIsReversed(constraints.crossAxisDirection),
+    );
+  }
+
+  @override
+  bool shouldRelayout(MenuGridDelegate oldDelegate) =>
+      oldDelegate.infoHeight != infoHeight;
+}
+
+class MenuGrid extends StatelessWidget {
+  const MenuGrid({
     super.key,
-    required this.crossAxisCount,
     required this.itemCount,
     required this.itemBuilder,
-    this.crossAxisSpacing = 12,
-    this.mainAxisSpacing = 12,
-    this.childAspectRatio = 1,
   });
 
-  final int crossAxisCount;
   final int itemCount;
   final Widget Function(BuildContext, int) itemBuilder;
-  final double crossAxisSpacing;
-  final double mainAxisSpacing;
-  final double childAspectRatio;
 
   @override
   Widget build(BuildContext context) {
     // Padding bawah menyesuaikan kartu keranjang melayang di mobile:
-    // kartu (≈52px) + margin 12 + safe area bawah, agar baris menu terakhir
-    // tidak tertutup dan tetap bisa ditekan.
+    // kartu (kira-kira 52px) + margin 12 + safe area bawah, agar baris menu
+    // terakhir tidak tertutup dan tetap bisa ditekan.
     final bottomPad = MediaQuery.paddingOf(context).bottom + 140;
+    // Nama 2 baris + harga + harga take away, ikut skala teks sistem;
+    // 22 = padding vertikal area info di MenuCard.
+    final infoHeight = MediaQuery.textScalerOf(context).scale(76) + 22;
     return GridView.builder(
       padding: EdgeInsets.only(bottom: bottomPad),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: crossAxisSpacing,
-        mainAxisSpacing: mainAxisSpacing,
-        childAspectRatio: childAspectRatio,
-      ),
+      gridDelegate: MenuGridDelegate(infoHeight: infoHeight),
       itemCount: itemCount,
       itemBuilder: itemBuilder,
     );

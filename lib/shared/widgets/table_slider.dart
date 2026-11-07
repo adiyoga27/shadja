@@ -93,7 +93,7 @@ class _TableSliderState extends ConsumerState<TableSlider> {
         Stack(
           children: [
             SizedBox(
-              height: 84,
+              height: MediaQuery.textScalerOf(context).scale(84),
               child: ListView.separated(
                 controller: _scrollCtrl,
                 scrollDirection: Axis.horizontal,
