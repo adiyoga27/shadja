@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadja/core/constants/api_endpoints.dart';
 import 'package:shadja/core/storage/token_storage.dart';
+import 'package:shadja/core/utils/error_reporter.dart';
 
 /// Sinyal bahwa sesi login tidak valid (response 401 dari request mana pun).
 /// Dio menyalakannya; [AuthNotifier] mendengarnya untuk mengarahkan
@@ -37,6 +38,7 @@ final dioClientProvider = Provider<Dio>((ref) {
         if (kDebugMode) {
           debugPrint('[DIO ERROR] ${e.requestOptions.path} → ${e.message}');
         }
+        ErrorReporter.reportDio(e);
         if (e.response?.statusCode == 401) {
           TokenStorage.clear();
           try {

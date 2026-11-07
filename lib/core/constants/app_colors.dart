@@ -23,6 +23,8 @@ class AppColors {
   static const dangerBg = Color(0xFFFEF2F2);
   static const warning = Color(0xFFF59E0B);
   static const warningBg = Color(0xFFFFFBEB);
+  // [warning] terlalu terang untuk teks di atas [warningBg].
+  static const warningText = Color(0xFFB45309);
   static const info = Color(0xFF2563EB);
   static const infoBg = Color(0xFFEFF6FF);
   static const success = Color(0xFF16A34A);

@@ -46,3 +46,6 @@ app.*.map.json
 
 # Installer output
 installer/*.exe
+
+# Token bot Telegram untuk ErrorReporter (repo publik, jangan di-commit)
+telegram.local.json

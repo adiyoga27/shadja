@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:shadja/core/constants/api_endpoints.dart';
 import 'package:shadja/core/network/dio_client.dart';
 import 'package:shadja/features/order/data/additional_cost_model.dart';
@@ -43,6 +44,51 @@ class CreateOrderItem {
   final String? notes;
 }
 
+/// Satu halaman hasil `GET /orders`.
+class OrderPage {
+  const OrderPage({required this.orders, required this.hasMore, this.total});
+
+  static const int defaultPerPage = 20;
+
+  /// Menerima paginator Laravel (`{data, current_page, last_page}`, dengan
+  /// meta di root atau di dalam `meta`) maupun array polos. Array polos berarti
+  /// server mengabaikan `page` dan sudah mengirim semua order, jadi tidak ada
+  /// halaman berikutnya.
+  factory OrderPage.fromResponse(
+    dynamic body, {
+    required int page,
+    required int perPage,
+  }) {
+    if (body is List) {
+      return OrderPage(
+        orders: _parse(body),
+        hasMore: false,
+        total: body.length,
+      );
+    }
+    final map = body as Map<String, dynamic>;
+    final list = map['data'] as List<dynamic>;
+    final meta = map['meta'] is Map ? map['meta'] as Map : map;
+    final lastPage = meta['last_page'] as num?;
+    return OrderPage(
+      orders: _parse(list),
+      // simplePaginate tidak punya last_page: halaman penuh = mungkin ada lagi.
+      hasMore: lastPage != null ? page < lastPage : list.length >= perPage,
+      total: (meta['total'] as num?)?.toInt(),
+    );
+  }
+
+  static List<OrderModel> _parse(List<dynamic> list) => list
+      .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
+      .toList();
+
+  final List<OrderModel> orders;
+  final bool hasMore;
+
+  /// Jumlah seluruh order yang cocok di server, bukan hanya di halaman ini.
+  final int? total;
+}
+
 class OrderRepository {
   OrderRepository(this._dio);
 
@@ -74,12 +120,25 @@ class OrderRepository {
         .toList();
   }
 
-  Future<List<OrderModel>> fetchOrders() async {
-    final response = await _dio.get(ApiEndpoints.orders);
-    final list = response.data as List<dynamic>;
-    return list
-        .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
-        .toList();
+  Future<OrderPage> fetchOrders({
+    int page = 1,
+    int perPage = OrderPage.defaultPerPage,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? status,
+  }) async {
+    final dateFormat = DateFormat('yyyy-MM-dd');
+    final response = await _dio.get(
+      ApiEndpoints.orders,
+      queryParameters: {
+        'page': page,
+        'per_page': perPage,
+        if (startDate != null) 'start_date': dateFormat.format(startDate),
+        if (endDate != null) 'end_date': dateFormat.format(endDate),
+        'status': ?status,
+      },
+    );
+    return OrderPage.fromResponse(response.data, page: page, perPage: perPage);
   }
 
   Future<OrderModel> fetchOrder(int id) async {

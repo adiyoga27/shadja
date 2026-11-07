@@ -30,6 +30,9 @@ class Formatters {
 
   static String time(DateTime dt) => DateFormat('HH:mm').format(dt);
 
+  static String weekdayDate(DateTime dt) =>
+      DateFormat('EEEE, dd MMM yyyy', 'id_ID').format(dt);
+
   static String dateTimeFromIso(String iso) {
     try {
       return dateTime(DateTime.parse(iso));
