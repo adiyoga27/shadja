@@ -241,14 +241,9 @@ class _KasirPageState extends ConsumerState<KasirPage> {
       );
     }
 
-    const cols = 4;
     final itemsToDisplay = items.where((m) => m.isActive).toList();
 
     return MasonryGridViewReduce(
-      crossAxisCount: cols,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 0.82,
       itemCount: itemsToDisplay.length,
       itemBuilder: (context, index) {
         final item = itemsToDisplay[index];
@@ -277,12 +272,7 @@ class _KasirPageState extends ConsumerState<KasirPage> {
   }
 
   Widget _buildGridSkeleton() {
-    const cols = 4;
     return MasonryGridViewReduce(
-      crossAxisCount: cols,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 0.82,
       itemCount: 8,
       itemBuilder: (_, _) => const MenuCardSkeleton(),
     );
@@ -376,25 +366,43 @@ class _CategoryChip extends StatelessWidget {
   }
 }
 
-/// Manual masonry-style grid using SliverGrid since we want consistent
-/// children. Falls back to GridView.builder via this wrapper.
+/// Grid menu responsif: jumlah kolom mengikuti lebar area yang tersedia
+/// (min. lebar kartu [minCardWidth]), dan tinggi kartu dihitung dari
+/// gambar (rasio [imageAspectRatio]) + tinggi teks sesuai skala font sistem,
+/// supaya gambar tidak terjepit di layar HP / font besar.
 class MasonryGridViewReduce extends StatelessWidget {
   const MasonryGridViewReduce({
     super.key,
-    required this.crossAxisCount,
     required this.itemCount,
     required this.itemBuilder,
     this.crossAxisSpacing = 12,
     this.mainAxisSpacing = 12,
-    this.childAspectRatio = 1,
+    this.minCardWidth = 150,
+    this.minColumns = 2,
+    this.maxColumns = 6,
+    this.imageAspectRatio = 4 / 3,
   });
 
-  final int crossAxisCount;
   final int itemCount;
   final Widget Function(BuildContext, int) itemBuilder;
   final double crossAxisSpacing;
   final double mainAxisSpacing;
-  final double childAspectRatio;
+  final double minCardWidth;
+  final int minColumns;
+  final int maxColumns;
+
+  /// Lebar : tinggi area gambar pada kartu.
+  final double imageAspectRatio;
+
+  /// Tinggi blok info MenuCard: padding 10+12, nama 2 baris (14 × 1.3),
+  /// jarak 4, harga (14), take away (11). Dikalikan skala font sistem.
+  static double _infoHeight(TextScaler scaler) {
+    const lineFactor = 1.35;
+    final name = scaler.scale(14) * 1.3 * 2;
+    final price = scaler.scale(14) * lineFactor;
+    final takeaway = scaler.scale(11) * lineFactor;
+    return 10 + name + 4 + price + takeaway + 12;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -402,16 +410,28 @@ class MasonryGridViewReduce extends StatelessWidget {
     // kartu (≈52px) + margin 12 + safe area bawah, agar baris menu terakhir
     // tidak tertutup dan tetap bisa ditekan.
     final bottomPad = MediaQuery.paddingOf(context).bottom + 140;
-    return GridView.builder(
-      padding: EdgeInsets.only(bottom: bottomPad),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: crossAxisSpacing,
-        mainAxisSpacing: mainAxisSpacing,
-        childAspectRatio: childAspectRatio,
-      ),
-      itemCount: itemCount,
-      itemBuilder: itemBuilder,
-    );
+    final scaler = MediaQuery.textScalerOf(context);
+
+    return LayoutBuilder(builder: (context, constraints) {
+      final width = constraints.maxWidth;
+      final cols = ((width + crossAxisSpacing) /
+              (minCardWidth + crossAxisSpacing))
+          .floor()
+          .clamp(minColumns, maxColumns);
+      final cardWidth = (width - crossAxisSpacing * (cols - 1)) / cols;
+      final cardHeight = cardWidth / imageAspectRatio + _infoHeight(scaler);
+
+      return GridView.builder(
+        padding: EdgeInsets.only(bottom: bottomPad),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: cols,
+          crossAxisSpacing: crossAxisSpacing,
+          mainAxisSpacing: mainAxisSpacing,
+          mainAxisExtent: cardHeight,
+        ),
+        itemCount: itemCount,
+        itemBuilder: itemBuilder,
+      );
+    });
   }
 }
