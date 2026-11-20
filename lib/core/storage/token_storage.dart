@@ -52,13 +52,26 @@ class TokenStorage {
 
   static Future<String?> getToken() => _storage.read(key: _keyToken);
 
-  // clear() dipakai saat logout & saat 401. Jangan pernah membiarkan error
-  // keluar dari sini agar logout tidak gagal karena masalah storage lokal.
+  static const _authKeys = [
+    _keyToken,
+    _keyUserId,
+    _keyUserName,
+    _keyUserEmail,
+    _keyUserRole,
+    _keyUserPhone,
+  ];
+
+  // clear() dipakai saat logout & saat 401. Hanya menghapus data auth/user;
+  // setting per-device (printer, lebar kertas, dll.) sengaja dipertahankan.
+  // Jangan pernah membiarkan error keluar dari sini agar logout tidak gagal
+  // karena masalah storage lokal.
   static Future<void> clear() async {
-    try {
-      await _storage.deleteAll();
-    } catch (e) {
-      debugPrint('[TokenStorage] clear gagal: $e');
+    for (final key in _authKeys) {
+      try {
+        await _serialized(() => _storage.delete(key: key));
+      } catch (e) {
+        debugPrint('[TokenStorage] clear gagal untuk $key: $e');
+      }
     }
   }
 
