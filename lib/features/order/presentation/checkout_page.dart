@@ -93,7 +93,26 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
     final cart = ref.read(cartProvider);
     if (cart.isEmpty) return;
 
-    final costs = await ref.read(additionalCostsProvider.future).catchError((_) => <AdditionalCostModel>[]);
+    // Jangan diam-diam menganggap "tidak ada biaya tambahan" bila gagal dimuat:
+    // backend tetap mengenakannya, sehingga total di layar pembayaran akan salah.
+    List<AdditionalCostModel> costs;
+    try {
+      costs = await ref.read(additionalCostsProvider.future);
+    } catch (_) {
+      ref.invalidate(additionalCostsProvider);
+      try {
+        costs = await ref.read(additionalCostsProvider.future);
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal memuat biaya tambahan. Periksa koneksi lalu coba lagi.'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+        return;
+      }
+    }
     final selectedCost = _additionalCost(costs);
 
     final req = CreateOrderRequest(
@@ -382,15 +401,56 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                       child: Center(
                           child: CircularProgressIndicator(strokeWidth: 2))),
                 ),
-                error: (_, _) => const SizedBox.shrink(),
+                error: (_, _) => Row(
+                  children: [
+                    const Icon(Icons.error_outline,
+                        size: 18, color: AppColors.danger),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Gagal memuat biaya tambahan',
+                        style: TextStyle(fontSize: 13, color: AppColors.danger),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => ref.invalidate(additionalCostsProvider),
+                      child: const Text('Coba lagi'),
+                    ),
+                  ],
+                ),
               );
             },
           ),
           const SizedBox(height: 20),
 
           // Summary
-          _SectionTitle(title: 'Ringkasan Pembayaran'),
-          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Expanded(
+                child: _SectionTitle(title: 'Ringkasan Pembayaran'),
+              ),
+              Consumer(
+                builder: (context, ref, _) {
+                  final loading = ref.watch(additionalCostsProvider).isLoading;
+                  return IconButton(
+                    tooltip: 'Muat ulang biaya tambahan',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: loading
+                        ? null
+                        : () => ref.invalidate(additionalCostsProvider),
+                    icon: loading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh, size: 20),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
           _PriceRow(label: 'Subtotal', value: Formatters.rupiah(_subtotal)),
           if (_discount > 0)
             _PriceRow(
@@ -432,12 +492,12 @@ class _CheckoutPageState extends ConsumerState<CheckoutPage> {
                 ),
                 loading: () => _PriceRow(
                   label: 'Total',
-                  value: Formatters.rupiah(cart.subtotal - _discount),
+                  value: Formatters.rupiah(_subtotal - _discount),
                   isTotal: true,
                 ),
                 error: (_, _) => _PriceRow(
                   label: 'Total',
-                  value: Formatters.rupiah(cart.subtotal - _discount),
+                  value: Formatters.rupiah(_subtotal - _discount),
                   isTotal: true,
                 ),
               );

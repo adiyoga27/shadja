@@ -3,8 +3,10 @@ import 'package:shadja/features/order/data/additional_cost_model.dart';
 import 'package:shadja/features/order/data/order_model.dart';
 import 'package:shadja/features/order/data/order_repository.dart';
 
+// autoDispose: diambil ulang setiap kali halaman checkout dibuka, supaya
+// kegagalan sesaat (jaringan / token belum siap) tidak tersimpan selamanya.
 final additionalCostsProvider =
-    FutureProvider<List<AdditionalCostModel>>((ref) async {
+    FutureProvider.autoDispose<List<AdditionalCostModel>>((ref) async {
   return ref.read(orderRepositoryProvider).fetchAdditionalCosts();
 });
 
